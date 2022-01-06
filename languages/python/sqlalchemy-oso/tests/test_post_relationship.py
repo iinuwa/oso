@@ -830,6 +830,7 @@ def test_two_level_isa_with_path(session, oso, tag_nested_many_many_test_fixture
 
     assert len(posts) == 5
 
+
 # TODO test_nested_relationship_single_many
 # TODO test_nested_relationship_single_single
 # TODO test_nested_relationship_single_single_single ... etc
