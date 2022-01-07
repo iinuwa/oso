@@ -58,7 +58,7 @@ go-test: rust-build
 docs-test: python-build
 	$(MAKE) -C docs test
 
-fmt: fmt-java fmt-rust fmt-python fmt-js fmt-go
+fmt: fmt-java fmt-rust fmt-python fmt-js fmt-go fmt-csharp
 
 # Ensure jq is installed.
 $(if $(shell command -v jq 2> /dev/null),,$(error Please install jq <https://stedolan.github.io/jq/>))
@@ -83,6 +83,9 @@ fmt-js:
 
 fmt-python:
 	$(MAKE) -C languages/python fmt
+
+fmt-csharp:
+	$(MAKE) -C languages/csharp fmt
 
 clippy:
 	cargo clippy --all-features --all-targets -- -D warnings
