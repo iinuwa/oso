@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Text.Json;
 using Oso.Ffi;
 
 namespace Oso;
@@ -6,10 +8,12 @@ public class Query : IDisposable
 {
 
     private readonly QueryHandle _handle;
+    private readonly Host _host;
 
-    internal Query(QueryHandle handle)
+    internal Query(QueryHandle handle, Host host)
     {
         _handle = handle;
+        _host = host;
     }
 
     // struct polar_CResult_c_char *polar_next_query_event(struct polar_Query *query_ptr);
@@ -23,9 +27,215 @@ public class Query : IDisposable
         }
     }
     */
-    public string? NextEvent()
+    /// Generate the next Query result
+    public Dictionary<string, object>? NextResult()
     {
-        return Native.NextQueryEvent(_handle);
+        while (true)
+        {
+            // TODO: Check if this can actually be null
+            string eventStr = Native.NextQueryEvent(_handle)!;
+            string kind, className;
+            JsonElement data, instance;
+            ulong callId;
+
+            try
+            {
+                JsonElement queryEvent = JsonDocument.Parse(eventStr).RootElement;
+                var property = queryEvent.EnumerateObject().First();
+                kind = property.Name;
+                data = property.Value;
+            }
+            catch (JsonException)
+            {
+                // TODO: we should have a consistent serialization format
+                kind = eventStr.Replace("\"", "");
+                throw new PolarRuntimeException("Unhandled event type: " + kind);
+            }
+
+            switch (kind)
+            {
+                case "Done":
+                    return null;
+                case "Result":
+                    return _host.DeserializePolarDictionary(data.GetProperty("bindings"));
+                case "MakeExternal":
+                    ulong id = data.GetProperty("instance_id").GetUInt64();
+                    if (_host.HasInstance(id))
+                    {
+                        // TODO: More specific exceptions?
+                        // throw new DuplicateInstanceRegistrationError(id);
+                        throw new OsoException($"Duplicate instance registration: {id}");
+                    }
+
+                    JsonElement constructor = data.GetProperty("constructor").GetProperty("value");
+                    if (constructor.TryGetProperty("Call", out JsonElement call))
+                    {
+                        className = call.GetProperty("name").GetString();
+                        var initargs = call.GetProperty("args");
+
+                        // kwargs should always be null in Java
+                        if (call.GetProperty("kwargs").ValueKind != JsonValueKind.Null)
+                        {
+                            // TODO: More specific exceptions?
+                            // throw new InstantiationError(className);
+                            throw new OsoException($"Failed to instantiate external class: {className}");
+                        }
+                        _host.MakeInstance(className, _host.DeserializePolarList(initargs), id);
+                        break;
+                    }
+                    else
+                    {
+                        // TODO: should this be an ArgumentException?
+                        throw new InvalidConstructorException("Bad constructor");
+                    }
+                case "ExternalCall":
+                    instance = data.GetProperty("instance");
+                    callId = data.GetProperty("call_id").GetUInt64();
+                    string attrName = data.GetProperty("attribute").GetString();
+
+                    JsonElement? jArgs = null;
+                    if (data.GetProperty("data").ValueKind != JsonValueKind.Null)
+                    {
+                        jArgs = data.GetProperty("args");
+                    }
+                    if (data.GetProperty("kwargs").ValueKind != JsonValueKind.Null)
+                    {
+                        // TODO: _Could_ we support this with named arguments?
+                        throw new InvalidCallException("Keyword arguments are not supported.");
+                    }
+                    HandleCall(attrName, jArgs, instance, callId);
+                    break;
+                case "ExternalIsa":
+                    instance = data.GetProperty("instance");
+                    callId = data.GetProperty("call_id").GetUInt64();
+                    className = data.GetProperty("class_tag").GetString();
+                    int answer = _host.IsA(instance, className) ? 1 : 0;
+                    Native.QuestionResult(_handle, callId, answer);
+                    break;
+                case "ExternalIsSubSpecializer":
+                    ulong instanceId = data.GetProperty("instance_id").GetUInt64();
+                    callId = data.GetProperty("call_id").GetUInt64();
+                    string leftTag = data.GetProperty("left_class_tag").GetString();
+                    string rightTag = data.GetProperty("right_class_tag").GetString();
+                    answer = _host.Subspecializer(instanceId, leftTag, rightTag) ? 1 : 0;
+                    Native.QuestionResult(_handle, callId, answer);
+                    break;
+                case "ExternalIsSubclass":
+                    callId = data.GetProperty("call_id").GetUInt64();
+                    answer =
+                        _host.IsSubclass(data.GetProperty("left_class_tag").GetString(), data.GetProperty("right_class_tag").GetString())
+                            ? 1
+                            : 0;
+                    Native.QuestionResult(_handle, callId, answer);
+                    break;
+                case "ExternalOp":
+                    callId = data.GetProperty("call_id").GetUInt64();
+                    var args = data.GetProperty("args");
+                    answer = _host.Operator(data.GetProperty("operator").GetString(), _host.DeserializePolarList(args)) ? 1 : 0;
+                    Native.QuestionResult(_handle, callId, answer);
+
+                    break;
+                case "NextExternal":
+                    callId = data.GetProperty("call_id").GetUInt64();
+                    JsonElement iterable = data.GetProperty("iterable");
+                    HandleNextExternal(callId, iterable);
+                    break;
+                case "Debug":
+                    if (data.TryGetProperty("message", out JsonElement messageElement))
+                    {
+                        string message = messageElement.GetString();
+                        // TODO: Replace with ILogger or text stream writer
+                        Console.WriteLine(message);
+                    }
+
+                    Console.Write("debug> ");
+                    try
+                    {
+                        string? input = Console.ReadLine();
+                        if (input == null) break;
+                        string command = _host.SerializePolarTerm(input).ToString();
+                        Native.DebugCommand(_handle, command);
+                    }
+                    catch (IOException e)
+                    {
+                        throw new PolarRuntimeException("Caused by: " + e.Message);
+                    }
+                    break;
+                default:
+                    throw new PolarRuntimeException("Unhandled event type: " + kind);
+            }
+        }
+    }
+
+    private void HandleCall(string attrName, JsonElement? jArgs, JsonElement polarInstance, ulong callId)
+    {
+        List<object>? args = null;
+        if (jArgs != null)
+        {
+            args = _host.DeserializePolarList((JsonElement)jArgs!);
+        }
+        try
+        {
+            object instance = _host.ParsePolarTerm(polarInstance);
+            // Select a method to call based on the types of the arguments.
+            object result = null;
+            try
+            {
+                // Class<?> cls = instance instanceof Class ? (Class<?>) instance : instance.getClass();
+                Type type = instance is Type t ? t : instance.GetType();
+                if (args != null)
+                {
+                    Type[] argTypes = args.Select(a => a.GetType()).ToArray();
+                    // TODO: Determine whether this is a performance bottleneck
+                    // TODO: This can be limited to search just for MethodInfo, I think
+                    MethodInfo? method = type.GetMembers()
+                        .Where(mi => mi.MemberType == MemberTypes.Method && mi.Name == attrName)
+                        .Cast<MethodInfo>()
+                        .FirstOrDefault(mi => mi.GetParameters().Select(pi => pi.ParameterType).ToArray() == argTypes);
+                    if (method == null)
+                    {
+                        throw new InvalidCallException(type.Name, attrName, argTypes);
+                    }
+
+                    result = method.Invoke(instance, args.ToArray());
+                }
+                else
+                {
+                    // Look for a field with the given name.
+                    PropertyInfo property = type.GetProperty(attrName) ?? throw new InvalidAttributeException(type.Name, attrName);
+                    result = property.GetValue(instance);
+                }
+                string term = _host.SerializePolarTerm(result).ToString();
+                Native.CallResult(_handle, callId, term);
+
+            }
+            catch (MemberAccessException e)
+            {
+                throw new InvalidCallException("Failed to handle call", e);
+            }
+            catch (TargetInvocationException tie)
+            {
+                throw new InvalidCallException("Failed to handle call", tie);
+            }
+        }
+        catch (InvalidCallException e)
+        {
+            Native.ReturnApplicationError(_handle, e.Message);
+            Native.CallResult(_handle, callId, "null");
+            return;
+        }
+        catch (InvalidAttributeException e)
+        {
+            Native.ReturnApplicationError(_handle, e.Message);
+            Native.CallResult(_handle, callId, "null");
+            return;
+        }
+    }
+
+    // TODO: better parameter names
+    private void HandleNextExternal(ulong callId, JsonElement something)
+    {
+        throw new NotImplementedException();
     }
 
     /**
@@ -98,9 +308,43 @@ public class Query : IDisposable
         }
     }
     */
-    public string? NextMessage()
+    private string? NextMessage()
     {
         return Native.NextQueryMessage(_handle);
+    }
+
+    private void ProcessMessages()
+    {
+        string? message = NextMessage();
+        while (message != null)
+        {
+            ProcessMessage(message);
+            message = NextMessage();
+        }
+    }
+
+    private void ProcessMessage(string queryMessage)
+    {
+        try
+        {
+            JsonElement doc = JsonDocument.Parse(queryMessage).RootElement;
+            string? kind = doc.GetProperty("kind").GetString();
+            string? msg = doc.GetProperty("msg").GetString();
+            if (kind == "Print")
+            {
+                // TODO: Replace this with a text stream writer or ILogger
+                Console.WriteLine(msg);
+            }
+            else if (kind == "Warning")
+            {
+                Console.WriteLine($"[warning] {msg}");
+            }
+        }
+        catch (JsonException)
+        {
+            throw new OsoException($"Invalid JSON Message: {queryMessage}");
+        }
+
     }
 
     // struct polar_CResult_c_char *polar_query_source_info(struct polar_Query *query_ptr);

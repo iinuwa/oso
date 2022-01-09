@@ -12,6 +12,9 @@ rust:
 		cp ../../target/debug/libpolar.so oso/src/Oso/Native/linux/; \
 	fi
 
+build: rust
+	cd oso && dotnet build
+
 test: rust
 	cd oso && dotnet test 
 

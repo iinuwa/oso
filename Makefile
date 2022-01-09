@@ -55,6 +55,12 @@ java-test:
 go-test: rust-build
 	$(MAKE) -C languages/go test
 
+csharp-build:
+	$(MAKE) -C languages/csharp build
+
+csharp-test:
+	$(MAKE) -C languages/csharp test
+
 docs-test: python-build
 	$(MAKE) -C docs test
 

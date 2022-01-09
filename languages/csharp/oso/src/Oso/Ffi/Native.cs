@@ -86,11 +86,11 @@ internal static class Native
     [DllImport(Polar, CharSet = CharSet.Ansi)]
     private extern static unsafe QueryResult* polar_new_query_from_term(PolarHandle polar_ptr, string query_term, uint trace);
 
-    internal static Query NewQueryFromTerm(PolarHandle polar_ptr, string query_term, uint trace)
+    internal static Query NewQueryFromTerm(PolarHandle polar, Host host, string queryTerm, uint trace)
     {
         unsafe
         {
-            return GetQueryResult(polar_new_query_from_term(polar_ptr, query_term, trace));
+            return GetQueryResult(polar_new_query_from_term(polar, queryTerm, trace), host);
         }
     }
 
@@ -103,11 +103,11 @@ internal static class Native
     [DllImport(Polar, CharSet = CharSet.Ansi)]
     private extern static unsafe QueryResult* polar_new_query(PolarHandle polar_ptr, string query_str, uint trace);
 
-    internal static Query NewQuery(PolarHandle polar_ptr, string query_str, uint trace)
+    internal static Query NewQuery(PolarHandle polar, Host host, string query, uint trace)
     {
         unsafe
         {
-            return GetQueryResult(polar_new_query(polar_ptr, query_str, trace));
+            return GetQueryResult(polar_new_query(polar, query, trace), host);
         }
     }
 
@@ -338,7 +338,7 @@ internal static class Native
                 }
                 else
                 {
-                    throw new PolarException(Marshal.PtrToStringAnsi(ptr->error));
+                    throw new OsoException(Marshal.PtrToStringAnsi(ptr->error));
                 }
             }
             finally
@@ -349,7 +349,7 @@ internal static class Native
 
     }
 
-    private static unsafe Query GetQueryResult(QueryResult* ptr)
+    private static unsafe Query GetQueryResult(QueryResult* ptr, Host host)
     {
         unsafe
         {
@@ -357,11 +357,14 @@ internal static class Native
             {
                 if (ptr->error == IntPtr.Zero)
                 {
-                    return new Query(new QueryHandle(ptr->result));
+                    // TODO: when is the query string freed?
+                    return new Query(new QueryHandle(ptr->result), host);
                 }
                 else
                 {
-                    throw new PolarException(Marshal.PtrToStringAnsi(ptr->error));
+                    string error = Marshal.PtrToStringAnsi(ptr->error)!;
+                    _ = string_free(ptr->error);
+                    throw new OsoException(error);
                 }
             }
             finally
@@ -379,17 +382,27 @@ internal static class Native
             {
                 if (ptr->error == IntPtr.Zero)
                 {
-                    return Marshal.PtrToStringAnsi(ptr->result);
+                    // TODO: Is this efficient? This is often returning UTF-8 JSON, so we're
+                    // copying and encoding to UTF-16, then re-encoding backk to UTF-8 to parse the JSON.
+                    // Maybe this should be kept as a byte[] instead.
+                    string? result = Marshal.PtrToStringAnsi(ptr->result);
+                    _ = string_free(ptr->result);
+                    return result;
                 }
                 else
                 {
-                    throw new PolarException(Marshal.PtrToStringAnsi(ptr->error));
+                    if (ptr->result == IntPtr.Zero)
+                    {
+                        throw new OsoException("Internal error: both result and error pointers are non-null");
+                    }
+
+                    string error = Marshal.PtrToStringAnsi(ptr->error)!;
+                    _ = string_free(ptr->error);
+                    throw new OsoException(error);
                 }
             }
             finally
             {
-                // TODO: Does string_free need to be called here?
-                _ = string_free(ptr->result);
                 _ = result_free(ptr);
             }
         }
