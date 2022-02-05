@@ -6,13 +6,13 @@ namespace Oso;
 public class Polar : IDisposable
 {
     private readonly PolarHandle _handle;
-    private readonly Host _host;
+    public Host Host { get; }
 
     // struct polar_Polar *polar_new(void);
     public Polar()
     {
         _handle = Native.polar_new();
-        _host = new Host();
+        Host = new Host();
     }
 
     // struct polar_CResult_c_void *polar_load(struct polar_Polar *polar_ptr, const char *sources);
@@ -66,7 +66,7 @@ public class Polar : IDisposable
     public Query? NextInlineQuery(uint trace)
     {
         var handle = Native.polar_next_inline_query(_handle, trace);
-        return (handle != null) ? new Query(handle, _host) : null;
+        return (handle != null) ? new Query(handle, Host) : null;
     }
 
     /*
@@ -76,7 +76,7 @@ public class Polar : IDisposable
     */
     public Query NewQueryFromTerm(string queryTerm, uint trace)
     {
-        return Native.NewQueryFromTerm(_handle, _host, queryTerm, trace);
+        return Native.NewQueryFromTerm(_handle, Host, queryTerm, trace);
     }
 
     /*
@@ -86,7 +86,7 @@ public class Polar : IDisposable
     */
     public Query NewQuery(string query, uint trace)
     {
-        return Native.NewQuery(_handle, _host, query, trace);
+        return Native.NewQuery(_handle, Host, query, trace);
     }
 
     // struct polar_CResult_c_char *polar_next_polar_message(struct polar_Polar *polar_ptr);
