@@ -116,7 +116,7 @@ internal static class Native
     [DllImport(Polar)]
     private extern static unsafe StringResult* polar_next_polar_message(PolarHandle polar_ptr);
 
-    internal static string? NextPolarMessage(PolarHandle polar)
+    internal static string NextPolarMessage(PolarHandle polar)
     {
         unsafe
         {
@@ -128,7 +128,7 @@ internal static class Native
     [DllImport(Polar)]
     private extern static unsafe StringResult* polar_next_query_event(QueryHandle query_ptr);
 
-    internal static string? NextQueryEvent(QueryHandle query)
+    internal static string NextQueryEvent(QueryHandle query)
     {
         unsafe
         {
@@ -211,7 +211,7 @@ internal static class Native
     [DllImport(Polar)]
     private extern static unsafe StringResult* polar_next_query_message(QueryHandle query_ptr);
 
-    internal static string? NextQueryMessage(QueryHandle query)
+    internal static string NextQueryMessage(QueryHandle query)
     {
         unsafe
         {
@@ -223,7 +223,7 @@ internal static class Native
     [DllImport(Polar)]
     private extern static unsafe StringResult* polar_query_source_info(QueryHandle query_ptr);
 
-    internal static string? QuerySourceInfo(QueryHandle query)
+    internal static string QuerySourceInfo(QueryHandle query)
     {
         unsafe
         {
@@ -299,7 +299,7 @@ internal static class Native
     [DllImport(Polar, CharSet = CharSet.Ansi)]
     private extern static unsafe StringResult* polar_build_data_filter(PolarHandle polar_ptr, string types, string results, string variable, string class_tag);
 
-    internal static string? BuildDataFilter(PolarHandle polar, string types, string results, string variable, string classTag)
+    internal static string BuildDataFilter(PolarHandle polar, string types, string results, string variable, string classTag)
     {
         unsafe
         {
@@ -318,7 +318,7 @@ internal static class Native
     [DllImport(Polar, CharSet = CharSet.Ansi)]
     private extern static unsafe StringResult* polar_build_filter_plan(PolarHandle polar_ptr, string types, string results, string variable, string class_tag);
 
-    internal static string? BuildFilterPlan(PolarHandle polar, string types, string results, string variable, string classTag)
+    internal static string BuildFilterPlan(PolarHandle polar, string types, string results, string variable, string classTag)
     {
         unsafe
         {
@@ -374,7 +374,7 @@ internal static class Native
         }
 
     }
-    private static unsafe string? GetStringResult(StringResult* ptr)
+    private static unsafe string GetStringResult(StringResult* ptr)
     {
         unsafe
         {
@@ -385,9 +385,14 @@ internal static class Native
                     // TODO: Is this efficient? This is often returning UTF-8 JSON, so we're
                     // copying and encoding to UTF-16, then re-encoding backk to UTF-8 to parse the JSON.
                     // Maybe this should be kept as a byte[] instead.
-                    string? result = Marshal.PtrToStringAnsi(ptr->result);
-                    _ = string_free(ptr->result);
-                    return result;
+                    try
+                    {
+                        return Marshal.PtrToStringAnsi(ptr->result) ?? throw new OsoException("Received null string from native API.");
+                    }
+                    finally
+                    {
+                        _ = string_free(ptr->result);
+                    }
                 }
                 else
                 {
