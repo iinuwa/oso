@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using Xunit;
 namespace Oso.Tests;
@@ -12,7 +13,7 @@ public class PolarTests
         polar.Load("f(1);");
         Query query = polar.NewQuery("f(x)", 0);
         // TODO: Are any of these strings actually nullable? If not, we should go back and mark them as non-nullable.
-        var result = query.NextResult(); // TODO: This should be an enumerator?
+        var result = query.Results.ToList()[0];
         Assert.Equal(new() { { "x", 1 } }, result);
     }
 

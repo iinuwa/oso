@@ -27,8 +27,32 @@ public class Query : IDisposable
         }
     }
     */
+    private bool _resultsEnumerated;
+    private List<Dictionary<string, object>> _results = new ();
+
+    /// <remarks>Not thread-safe, and does not support concurrent enumerations. Fully enumerate once before calling again.</remarks>
+    public IEnumerable<Dictionary<string, object>> Results
+    {
+        get => _resultsEnumerated ? _results : EnumerateResults();
+    }
+
+    private IEnumerable<Dictionary<string, object>> EnumerateResults()
+    {
+        var result = NextResult();
+        if (result != null)
+        {
+            _results.Add(result);
+            yield return result;
+        }
+        else 
+        {
+            _resultsEnumerated = true;
+            yield break;
+        }
+    }
+
     /// Generate the next Query result
-    public Dictionary<string, object>? NextResult()
+    private Dictionary<string, object>? NextResult()
     {
         while (true)
         {
