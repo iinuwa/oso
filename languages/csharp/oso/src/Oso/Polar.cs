@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Oso.Ffi;
 
 namespace Oso;
@@ -12,6 +12,7 @@ public class Polar : IDisposable
     public Polar()
     {
         _handle = Native.polar_new();
+        Host = new Host(_handle);
         Host = new Host();
     }
 
@@ -40,9 +41,9 @@ public class Polar : IDisposable
      *                                                      const char *name,
      *                                                      const char *value);
      */
-    public void RegisterConstant(string name, string value)
+    public void RegisterConstant(object? value, string name)
     {
-        Native.RegisterConstant(_handle, name, value);
+        Native.RegisterConstant(_handle, name, Host.SerializePolarTerm(value).ToString());
     }
 
     /**

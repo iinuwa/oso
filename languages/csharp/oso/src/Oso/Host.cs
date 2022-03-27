@@ -1,10 +1,18 @@
 using System.Text.Json;
+using Oso.Ffi;
 
 namespace Oso;
 
 public class Host
 {
-    private readonly Dictionary<ulong, object> _instances = new();
+    private readonly Dictionary<ulong, object?> _instances = new();
+    private readonly Dictionary<Type, ulong> _classIds = new();
+    private readonly PolarHandle _handle;
+
+    internal Host(PolarHandle handle)
+    {
+        _handle = handle;
+    }
 
     public bool AcceptExpression { get; set; }
     public Dictionary<string, object> DeserializePolarDictionary(JsonElement element)
@@ -100,8 +108,7 @@ public class Host
             case "Dictionary":
                 return DeserializePolarDictionary(property.Value.GetProperty("fields"));
             case "ExternalInstance":
-                throw new NotImplementedException();
-            // return getInstance(property.Value.GetProperty("instance_id").GetUInt64());
+                return GetInstance(property.Value.GetProperty("instance_id").GetUInt64());
             case "Call":
                 List<object> args = DeserializePolarList(property.Value.GetProperty("args"));
                 throw new NotImplementedException();
@@ -244,29 +251,28 @@ public class Host
                 jVal.put("Pattern", patternJSON);
             }
         }
+        */
         else
         {
             writer.WriteStartObject("ExternalInstance");
-            long instanceId;
+            ulong? instanceId = null;
 
             // if the object is a Class, then it will already have an instance ID
-            if (value is Type) {
-                instanceId = classIds.get(value);
+            if (value is Type t) {
+                instanceId = _classIds[t];
             }
 
-            // attrs.put("instance_id", cacheInstance(value, instanceId));
-            // attrs.put("repr", value?.ToString() ?? "null"); // value == null ? "null" : value.toString());
-            writer.WriteStartObject("instance_id", cacheInstance(value, instanceId));
-            writer.WriteString("repr", value?.ToString());
+            writer.WriteNumber("instance_id", CacheInstance(value, instanceId)); // TODO
+            writer.WriteString("repr", value?.ToString() ?? "null");
 
             // pass a class_repr string *for registered types only*
             if (value != null)
             {
-                Class classFromValue = value.getClass();
-                String stringifiedClassFromValue = classFromValue.toString();
-                stringifiedClassFromValue =
-                    classIds.containsKey(classFromValue) ? stringifiedClassFromValue : "null";
-                attrs.put("class_repr", stringifiedClassFromValue);
+                Type valueType = value.GetType();
+                string valueTypeRepr = _classIds.ContainsKey(valueType)
+                    ? valueType.ToString()
+                    : "null";
+                writer.WriteString("class_repr", valueTypeRepr);
             }
             else
             {
@@ -275,7 +281,6 @@ public class Host
 
             writer.WriteEndObject();
         }
-        */
 
         // Build Polar term
         writer.WriteEndObject();
@@ -283,6 +288,13 @@ public class Host
         writer.Flush();
         var reader = new Utf8JsonReader(stream.ToArray());
         return JsonElement.ParseValue(ref reader);
+    }
+
+    public ulong CacheInstance(object? instance, ulong? id)
+    {
+        ulong i = id ?? Native.polar_get_external_id(_handle);
+        _instances[i] = instance;
+        return i;
     }
 
     void SerializePolarList(Utf8JsonWriter writer, object listLikeObject)
@@ -421,7 +433,7 @@ public class Host
     /// </summary>
     public bool HasInstance(ulong instanceId) => _instances.ContainsKey(instanceId);
 
-    private object GetInstance(ulong instanceId)
+    private object? GetInstance(ulong instanceId)
     {
         return _instances.TryGetValue(instanceId, out object? value)
             ? value
