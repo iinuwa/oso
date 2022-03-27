@@ -108,62 +108,57 @@ public class PolarTests
         object java = p.host.toJava(polar);
         Assert.Equal(pred, java);
     }
+    */
 
     [Fact]
     public void TestNaN()
     {
         var polar = new Polar();
-        // TODO: 
-        // polar.registerConstant(Double.NaN, "nan");
+        polar.RegisterConstant(double.NaN, "nan");
 
-        Dictionary<string, object> result = polar.NewQuery("x = nan", 0).NextResult();
+        Dictionary<string, object>? result = polar.NewQuery("x = nan", 0).Results.First();
         object x = result["x"];
         Assert.True(x is double);
         double y = (double)x;
         Assert.True(double.IsNaN(y));
 
-        Assert.True(polar.NewQuery("nan = nan", 0).NextResult().Count == 0, "NaN != NaN");
-        // assertTrue(p.query("nan = nan").results().isEmpty(), "NaN != NaN");
+        Assert.True(!polar.NewQuery("nan = nan", 1).Results.Any(), "NaN != NaN");
     }
 
     [Fact]
     public void TestInfinities()
     {
-        p.registerConstant(Double.POSITIVE_INFINITY, "inf");
+        var polar = new Polar();
+        polar.RegisterConstant(double.PositiveInfinity, "inf");
 
-        List<HashMap<String, object>> inf_results = p.query("x = inf").results();
-        HashMap<String, object> inf_result = inf_results.get(0);
-        object inf = inf_result.get("x");
-        Assert.True((Double)inf == Double.POSITIVE_INFINITY);
+        Dictionary<string, object> infResult = polar.NewQuery("x = inf", 0).Results.First();
+        object inf = infResult["x"];
+        Assert.True((double)inf == double.PositiveInfinity);
 
-        Assert.False(p.query("inf = inf").results().isEmpty(), "Infinity == Infinity");
+        Assert.True(polar.NewQuery("inf = inf", 0).Results.Any(), "Infinity == Infinity");
 
-        p.registerConstant(Double.NEGATIVE_INFINITY, "neg_inf");
+        polar.RegisterConstant(double.NegativeInfinity, "neg_inf");
 
-        List<HashMap<String, object>> neg_inf_results = p.query("x = neg_inf").results();
-        HashMap<String, object> neg_inf_result = neg_inf_results.get(0);
-        object neg_inf = neg_inf_result.get("x");
-        Assert.True((Double)neg_inf == Double.NEGATIVE_INFINITY);
+        Dictionary<string, object> negInfResult = polar.NewQuery("x = neg_inf", 0).Results.First();
+        var negInf = (double)negInfResult["x"];
+        Assert.True(negInf == double.NegativeInfinity);
 
-        Assert.False(p.query("neg_inf = neg_inf").results().isEmpty(), "-Infinity == -Infinity");
+        Assert.True(polar.NewQuery("neg_inf = neg_inf", 0).Results.Any(), "-Infinity == -Infinity");
 
-        Assert.True(p.query("inf = neg_inf").results().isEmpty(), "Infinity != -Infinity");
-        Assert.True(p.query("inf < neg_inf").results().isEmpty(), "Infinity > -Infinity");
-        Assert.False(p.query("neg_inf < inf").results().isEmpty(), "-Infinity < Infinity");
+        Assert.False(polar.NewQuery("inf = neg_inf", 0).Results.Any(), "Infinity != -Infinity");
+        Assert.False(polar.NewQuery("inf < neg_inf", 0).Results.Any(), "Infinity > -Infinity");
+        Assert.True(polar.NewQuery("neg_inf < inf", 0).Results.Any(), "-Infinity < Infinity");
     }
 
     [Fact]
-    // test_nil
     public void TestNil()
     {
-        p.loadStr("null(nil);");
+        var polar = new Polar();
+        polar.Load("null(nil);");
 
-        // Map.of() can't handle a null value.
-        HashMap<String, object> expected = new HashMap<String, Object>();
-        expected.put("x", null);
-        Assert.Equal(p.query("null(x)").results(), List.of(expected));
-        Assert.True(p.queryRule("null", (object)null).results().equals(List.of(Map.of())));
-        Assert.True(p.queryRule("null", List.of()).results().isEmpty());
+        List<Dictionary<string, object>> expected = new () { new () { { "x", null! } } };
+        Assert.Equal(polar.NewQuery("null(x)", 0).Results, expected);
+        // Assert.True(polar.queryRule("null", (object)null).results().equals(List.of(Map.of())));
+        // Assert.True(polar.queryRule("null", List.of()).results().isEmpty());
     }
-    */
 }
