@@ -124,12 +124,11 @@ public class Host
             case "ExternalInstance":
                 return GetInstance(property.Value.GetProperty("instance_id").GetUInt64());
             case "Call":
+                string name = property.Value.GetProperty("name").GetString();
                 List<object> args = DeserializePolarList(property.Value.GetProperty("args"));
-                throw new NotImplementedException();
-            // return new Predicate(property.Value.GetProperty("name").GetString(), args);
+                return new Predicate(name, args);
             case "Variable":
-                throw new NotImplementedException();
-            // return new Variable(property.Value.GetString());
+                return new Variable(property.Value.GetString());
             case "Expression":
                 if (!AcceptExpression)
                 {
@@ -229,12 +228,11 @@ public class Host
             SerializePolarList(writer, pred.Arguments ?? new List<object>());
             writer.WriteEndObject();
         }
-        /*
         else if (value is Variable variable)
         {
-            jVal.put("Variable", value);
-            writer.WriteStartObject("Variable");
+            writer.WriteString("Variable", variable.Name);
         }
+        /*
         else if (value is Expression expression)
         {
             jVal.put("Expression", expressionJSON);

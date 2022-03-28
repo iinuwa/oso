@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -65,19 +66,22 @@ public class PolarTests
             "Predicate query with .NET object expected to fail but didn't.");
     }
 
-    /*
-
     [Fact]
     public void TestQueryPredWithVariable()
     {
         // test query with Variable
         var polar = new Polar();
         polar.Load("f(a, b) if a = b;");
-        Assert.True(
-            polar.QueryRule("f", 1, new Variable("result")).Results.Equals(new List<Dictionary<string, object>>() { new() { { "result", 1 } } }),
-            "Predicate query with Variable failed.");
+        var expected = new List<Dictionary<string, object>>() { new() { { "result", 1 } } };
+        try
+        {
+            Assert.Equal(expected, polar.QueryRule("f", 1, new Variable("result")).Results);
+        }
+        catch(Exception e)
+        {
+            throw new Exception("Predicate query with Variable failed.", e);
+        }
     }
-    */
 
     /*** TEST FFI CONVERSIONS ***/
 
