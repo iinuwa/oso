@@ -5,14 +5,28 @@ namespace Oso;
 
 public class Host
 {
-    private readonly Dictionary<ulong, object?> _instances = new();
-    private readonly Dictionary<Type, ulong> _classIds = new();
     private readonly PolarHandle _handle;
+    private readonly Dictionary<string, Type> _classes = new();
+    private readonly Dictionary<Type, ulong> _classIds = new();
+    private readonly Dictionary<ulong, object?> _instances = new();
+    private readonly bool _acceptExpression;
 
     internal Host(PolarHandle handle)
     {
         _handle = handle;
     }
+
+    /// <summary>Copies
+    private Host(PolarHandle handle, Dictionary<string, Type> classes, Dictionary<Type, ulong> classIds, Dictionary<ulong, object?> instances, bool acceptExpression)
+    {
+        _handle = handle;
+        _classes = new(classes);
+        _classIds = new(classIds);
+        _instances = new(instances);
+        _acceptExpression = acceptExpression;
+    }
+
+    internal Host Clone() => new Host(_handle, _classes, _classIds, _instances, _acceptExpression);
 
     public bool AcceptExpression { get; set; }
     public Dictionary<string, object> DeserializePolarDictionary(JsonElement element)
@@ -200,19 +214,22 @@ public class Host
             writer.WriteString("String", stringValue);
         } else if (value != null && (value.GetType().IsArray || (value.GetType().IsGenericType && value.GetType().GetGenericTypeDefinition() == typeof(List<>))))
         {
+            writer.WritePropertyName("List");
             SerializePolarList(writer, value);
         }
         else if (value != null && value.GetType().IsGenericType && value.GetType().GetGenericTypeDefinition() == typeof(Dictionary<,>))
         {
             SerializePolarDictionary(writer, value);
         }
-        /*
         else if (value is Predicate pred)
         {
-            if (pred.args == null) pred.args = new ArrayList<Object>();
-            jVal.put(
-                "Call", new JsonElement(Dictionary.of("name", pred.name, "args", javaListToPolar(pred.args))));
+            writer.WriteStartObject("Call");
+            writer.WriteString("name", pred.Name);
+            writer.WritePropertyName("args");
+            SerializePolarList(writer, pred.Arguments ?? new List<object>());
+            writer.WriteEndObject();
         }
+        /*
         else if (value is Variable variable)
         {
             jVal.put("Variable", value);
@@ -300,7 +317,7 @@ public class Host
     void SerializePolarList(Utf8JsonWriter writer, object listLikeObject)
     {
         // We support int, double, float, bool, and string
-        writer.WriteStartArray("List");
+        writer.WriteStartArray();
         if (listLikeObject is IEnumerable<int> intList)
         {
             foreach(var element in intList)
@@ -415,17 +432,15 @@ public class Host
         writer.WriteEndObject();
     }
 
+    // TODO: Does this need to be public?
     public bool Operator(string op, List<object> args)
     {
-        throw new NotImplementedException();
-        /*
-        Object left = args.get(0), right = args.get(1);
-        if (op.equals("Eq")) {
+        Object left = args[0], right = args[1];
+        if ("Eq".Equals(op, StringComparison.InvariantCulture)) {
             if (left == null) return left == right;
-            else return left.equals(right);
+            else return left.Equals(right);
         }
-        throw new Exceptions.UnimplementedOperation(op);
-        */
+        throw new OsoException($"{op} are unimplemented in the oso .NET library");
     }
 
     /// <summary>

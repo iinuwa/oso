@@ -13,7 +13,18 @@ public class Polar : IDisposable
     {
         _handle = Native.polar_new();
         Host = new Host(_handle);
-        Host = new Host();
+
+        // Register global constants.
+        RegisterConstant(null, "nil");
+        // Register built-in classes.
+        /* TODO: 
+         * RegisterClass(typeof(bool), "Boolean");
+         * RegisterClass(typeof(int), "Integer");
+         * RegisterClass(typeof(double), "Float");
+         * RegisterClass(typeof(List), "List");
+         * RegisterClass(typeof(Dictionary<>), "Dictionary");
+         * RegisterClass(typeof(string), "String");
+         */
     }
 
     // struct polar_CResult_c_void *polar_load(struct polar_Polar *polar_ptr, const char *sources);
@@ -88,6 +99,15 @@ public class Polar : IDisposable
     public Query NewQuery(string query, uint trace)
     {
         return Native.NewQuery(_handle, Host, query, trace);
+    }
+
+    public Query QueryRule(string rule, Dictionary<string, object>? bindings = null, params object?[] args)
+    {
+        var host = Host.Clone();
+        string predicate = host.SerializePolarTerm(new Predicate(rule, args)).ToString();
+        return (bindings == null)
+            ? Native.NewQueryFromTerm(_handle, host, predicate, 0)
+            : Native.NewQueryFromTerm(_handle, host, predicate, bindings, 0);
     }
 
     // struct polar_CResult_c_char *polar_next_polar_message(struct polar_Polar *polar_ptr);

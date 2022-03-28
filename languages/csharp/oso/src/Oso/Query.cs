@@ -246,13 +246,11 @@ public class Query : IDisposable
         {
             Native.ReturnApplicationError(_handle, e.Message);
             Native.CallResult(_handle, callId, "null");
-            return;
         }
         catch (InvalidAttributeException e)
         {
             Native.ReturnApplicationError(_handle, e.Message);
             Native.CallResult(_handle, callId, "null");
-            return;
         }
     }
 
@@ -382,7 +380,7 @@ public class Query : IDisposable
                                             const char *name,
                                             const char *value);
     */
-    public void Bind(string name, string value)
+    internal void Bind(string name, string value)
     {
         Native.QueryBind(_handle, name, value);
     }

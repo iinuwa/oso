@@ -158,7 +158,7 @@ public class PolarTests
 
         List<Dictionary<string, object>> expected = new () { new () { { "x", null! } } };
         Assert.Equal(polar.NewQuery("null(x)", 0).Results, expected);
-        // Assert.True(polar.queryRule("null", (object)null).results().equals(List.of(Map.of())));
-        // Assert.True(polar.queryRule("null", List.of()).results().isEmpty());
+        Assert.Equal(new List<Dictionary<string, object>>() { new () }, polar.QueryRule("null", args: new object?[] { null }).Results);
+        Assert.False(polar.QueryRule("null", new ()).Results.Any());
     }
 }

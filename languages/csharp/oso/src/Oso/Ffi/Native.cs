@@ -94,6 +94,19 @@ internal static class Native
         }
     }
 
+    internal static Query NewQueryFromTerm(PolarHandle polar, Host host, string queryTerm, Dictionary<string, object> bindings, uint trace)
+    {
+        Query query;
+        unsafe
+        {
+            query = GetQueryResult(polar_new_query_from_term(polar, queryTerm, trace), host);
+        }
+        foreach (var (name, value) in bindings)
+        {
+            query.Bind(name, host.SerializePolarTerm(value).ToString());
+        }
+        return query;
+    }
 
     /**
       *  struct polar_CResult_Query *polar_new_query(struct polar_Polar *polar_ptr,
