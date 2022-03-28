@@ -411,7 +411,9 @@ internal static class Native
                 {
                     if (ptr->result == IntPtr.Zero)
                     {
-                        throw new OsoException("Internal error: both result and error pointers are non-null");
+                        var r = Marshal.PtrToStringAnsi(ptr->result);
+                        var e = Marshal.PtrToStringAnsi(ptr->error);
+                        throw new OsoException($"Internal error: both result and error pointers are non-null: Result: {r}. Error: {e}");
                     }
 
                     string error = Marshal.PtrToStringAnsi(ptr->error)!;
