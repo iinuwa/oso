@@ -118,7 +118,7 @@ public class Query : IDisposable
                     string attrName = data.GetProperty("attribute").GetString();
 
                     JsonElement? jArgs = null;
-                    if (data.GetProperty("data").ValueKind != JsonValueKind.Null)
+                    if (data.TryGetProperty("data", out JsonElement externalCallData) && externalCallData.ValueKind != JsonValueKind.Null)
                     {
                         jArgs = data.GetProperty("args");
                     }

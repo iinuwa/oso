@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Oso.Ffi;
 
 namespace Oso;
@@ -57,6 +57,14 @@ public class Polar : IDisposable
         Native.RegisterConstant(_handle, name, Host.SerializePolarTerm(value).ToString());
     }
 
+    public void RegisterClass(Type t) => RegisterClass(t, t.Name);
+
+    public void RegisterClass(Type t, string name)
+    {
+        Host.CacheClass(t, name);
+        RegisterConstant(t, name);
+    }
+
     /**
      *  struct polar_CResult_c_void *polar_register_mro(struct polar_Polar *polar_ptr,
      *                                                  const char *name,
@@ -101,6 +109,7 @@ public class Polar : IDisposable
         return Native.NewQuery(_handle, Host, query, trace);
     }
 
+    public Query QueryRule(string rule, params object?[] args) => QueryRule(rule, null, args);
     public Query QueryRule(string rule, Dictionary<string, object>? bindings = null, params object?[] args)
     {
         var host = Host.Clone();

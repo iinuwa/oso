@@ -4,6 +4,28 @@ using System.Text.Json;
 using Xunit;
 namespace Oso.Tests;
 
+public class MyClass
+{
+    public string Name { get; set; }
+    public int Id { get; set; }
+
+    public MyClass(string name, int id)
+    {
+        Name = name;
+        Id = id;
+    }
+    public string MyMethod(string arg) => arg;
+    public List<string> MyList() => new () { "hello", "world" };
+    public MySubClass MySubClass(string name, int id) => new MySubClass(name, id);
+    public static string MyStaticMethod() => "hello world";
+    public string? MyReturnNull() => null;
+}
+
+public class MySubClass : MyClass
+{
+    public MySubClass(string name, int id) : base(name, id) { }
+}
+
 public class PolarTests
 {
     [Fact]
@@ -16,6 +38,46 @@ public class PolarTests
         var result = query.Results.ToList()[0];
         Assert.Equal(new() { { "x", 1 } }, result);
     }
+
+    [Fact]
+    public void TestBasicQueryPredicate()
+    {
+        // test basic query
+        var polar = new Polar();
+        polar.Load("f(a, b) if a = b;");
+        Assert.True(polar.QueryRule("f", 1, 1).Results.Any(), "Basic predicate query failed.");
+        Assert.False(
+            polar.QueryRule("f", 1, 2).Results.Any(),
+            "Basic predicate query expected to fail but didn't.");
+    }
+    [Fact]
+    public void TestQueryPredWithObject()
+    {
+        // test query with Java Object
+        var polar = new Polar();
+        polar.RegisterClass(typeof(MyClass), "MyClass");
+        polar.Load("g(x) if x.Id = 1;");
+        Assert.True(
+            polar.QueryRule("g", new MyClass("test", 1)).Results.Any(),
+            "Predicate query with .NET object failed.");
+        Assert.False(
+            polar.QueryRule("g", new MyClass("test", 2)).Results.Any(),
+            "Predicate query with .NET object expected to fail but didn't.");
+    }
+
+    /*
+
+    [Fact]
+    public void TestQueryPredWithVariable()
+    {
+        // test query with Variable
+        var polar = new Polar();
+        polar.Load("f(a, b) if a = b;");
+        Assert.True(
+            polar.QueryRule("f", 1, new Variable("result")).Results.Equals(new List<Dictionary<string, object>>() { new() { { "result", 1 } } }),
+            "Predicate query with Variable failed.");
+    }
+    */
 
     /*** TEST FFI CONVERSIONS ***/
 
@@ -159,6 +221,6 @@ public class PolarTests
         List<Dictionary<string, object>> expected = new () { new () { { "x", null! } } };
         Assert.Equal(polar.NewQuery("null(x)", 0).Results, expected);
         Assert.Equal(new List<Dictionary<string, object>>() { new () }, polar.QueryRule("null", args: new object?[] { null }).Results);
-        Assert.False(polar.QueryRule("null", new ()).Results.Any());
+        Assert.False(polar.QueryRule("null", bindings: new ()).Results.Any());
     }
 }

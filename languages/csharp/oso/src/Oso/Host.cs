@@ -314,6 +314,18 @@ public class Host
         return i;
     }
 
+    public string CacheClass(Type t, string name)
+    {
+        if (_classes.TryGetValue(name, out Type? oldType))
+        {
+            throw new OsoException($"Attempted to alias {name} as {t}, but {oldType} already has that alias.");
+        }
+
+        _classes[name] = t;
+        _classIds[t] = CacheInstance(t, null);
+        return name;
+    }
+
     void SerializePolarList(Utf8JsonWriter writer, object listLikeObject)
     {
         // We support int, double, float, bool, and string
