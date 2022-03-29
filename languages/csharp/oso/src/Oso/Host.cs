@@ -88,7 +88,11 @@ public class Host
     /// </summary>
     internal bool IsA(JsonElement instance, string className)
     {
-        throw new NotImplementedException();
+        if (_classes.TryGetValue(className, out Type? t))
+        {
+            return ParsePolarTerm(instance).GetType() == t;
+        }
+        else throw new OsoException($"Unregistered class: {className}");
     }
 
     /// <summary>

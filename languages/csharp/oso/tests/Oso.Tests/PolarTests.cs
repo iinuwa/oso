@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text.Json;
 using Xunit;
@@ -18,6 +19,7 @@ public class MyClass
     public string MyMethod(string arg) => arg;
     public List<string> MyList() => new () { "hello", "world" };
     public MySubClass MySubClass(string name, int id) => new MySubClass(name, id);
+    public IEnumerable<string> MyEnumeration() => new List<string>() { "hello", "world" };
     public static string MyStaticMethod() => "hello world";
     public string? MyReturnNull() => null;
 }
@@ -319,32 +321,43 @@ public class PolarTests
             "Failed to get attribute on external instance.");
     }
 
-/*
-  [Fact]
-  public void TestReturnJavaInstanceFromCall()
+    [Fact]
+    public void TestReturnInstanceFromCall()
     {
-    MyClass c = new MyClass("test", 1);
-    p.loadStr("test(c: MyClass) if x = c.mySubClass(c.name, c.id) and x.id = c.id;");
-    Assert.False(p.queryRule("test", c).results().isEmpty());
-  }
+        var polar = new Polar();
+        polar.RegisterClass(typeof(MyClass), "MyClass");
+        MyClass c = new MyClass("test", 1);
+        polar.Load("test(c: MyClass) if x = c.MySubClass(c.Name, c.Id) and x.Id = c.Id;");
+        Assert.NotEmpty(polar.QueryRule("test", c).Results);
+    }
 
-  [Fact]
-  public void TestEnumerationCallResults()
+    [Fact]
+    public void TestEnumerationCallResults()
     {
-    MyClass c = new MyClass("test", 1);
-    p.loadStr("test(c: MyClass, x) if x in c.myEnumeration();");
-    List<HashMap<String, Object>> results = p.queryRule("test", c, new Variable("x")).results();
-    Assert.True(results.equals(List.of(Map.of("x", "hello"), Map.of("x", "world"))));
-  }
+        var polar = new Polar();
+        polar.RegisterClass(typeof(MyClass), "MyClass");
+        MyClass c = new MyClass("test", 1);
+        polar.Load("test(c: MyClass, x) if x in c.MyEnumeration();");
+        var results = polar.QueryRule("test", c, new Variable("x")).Results;
+        List<Dictionary<string, object>> expected = new()
+        {
+            new() { { "x", "hello" } },
+            new() { { "x", "world" } }
+        };
+        Assert.Equal(expected, results, new ResultsComparer());
+    }
 
-  [Fact]
-  public void TestStringMethods()
+    [Fact]
+    public void TestStringMethods()
     {
-    p.loadStr("f(x) if x.length() = 3;");
-    Assert.False(p.query("f(\"oso\")").results().isEmpty());
-    Assert.True(p.query("f(\"notoso\")").results().isEmpty());
-  }
+        var polar = new Polar();
+        // TODO: Is string.Length() defined in Polar, or in the Host?
+        polar.Load("f(x) if x.Length = 3;");
+        Assert.NotEmpty(polar.NewQuery("f(\"oso\")", 0).Results);
+        Assert.Empty(polar.NewQuery("f(\"notoso\")", 0).Results);
+    }
 
+    /*
   [Fact]
   public void TestListMethods()
     {
@@ -423,11 +436,21 @@ public class PolarTests
     Assert.False(p.query("test(1)").results().isEmpty());
   }
 
-  [Fact]
-  public void TestExternalOp()
+    #endregion
+}
+internal class ResultsComparer : IEqualityComparer<IEnumerable<Dictionary<string, object>>>
+{
+    public bool Equals(IEnumerable<Dictionary<string, object>>? x, IEnumerable<Dictionary<string, object>>? y)
     {
-    Assert.False(p.query("new String(\"foo\") == new String(\"foo\")").results().isEmpty());
-  }
-  */
-#endregion
+        foreach (var (xResult, yResult) in x.Zip(y))
+        {
+            if (!xResult.SequenceEqual(yResult)) return false;
+        }
+        return true;
+    }
+
+    public int GetHashCode([DisallowNull] IEnumerable<Dictionary<string, object>> obj)
+    {
+        throw new NotImplementedException();
+    }
 }
