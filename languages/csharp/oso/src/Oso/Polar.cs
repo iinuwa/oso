@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Text;
+using System.Text.Json;
 using Oso.Ffi;
 
 namespace Oso;
@@ -36,8 +37,17 @@ public class Polar : IDisposable
 
     public void Load(string source)
     {
-        // TODO
-        string sourcesJson = $@"[{{""src"":""{source}"", ""filename"": null}}]"; // JsonSerializer.Serialize(sources.Select(source => new KeyValuePair<string, string>("src", source)));
+        var stream = new MemoryStream();
+        var writer = new Utf8JsonWriter(stream);
+        writer.WriteStartArray();
+        writer.WriteStartObject();
+        writer.WriteString("src", source);
+        writer.WriteNull("filename");
+        writer.WriteEndObject();
+        writer.WriteEndArray();
+        writer.Flush();
+
+        string sourcesJson = Encoding.UTF8.GetString(stream.ToArray()!);
         // TODO: Host.RegisterMros();
         Native.Load(_handle, sourcesJson);
         // TODO: Move this to Native

@@ -97,12 +97,12 @@ public class Query : IDisposable
                         className = call.GetProperty("name").GetString();
                         var initargs = call.GetProperty("args");
 
-                        // kwargs should always be null in Java
+                        // kwargs should are not supported in .NET and should always be null
                         if (call.GetProperty("kwargs").ValueKind != JsonValueKind.Null)
                         {
                             // TODO: More specific exceptions?
                             // throw new InstantiationError(className);
-                            throw new OsoException($"Failed to instantiate external class: {className}");
+                            throw new OsoException($"Failed to instantiate external class {className}; named arguments are not supported in .NET");
                         }
                         _host.MakeInstance(className, _host.DeserializePolarList(initargs), id);
                         break;
@@ -113,22 +113,28 @@ public class Query : IDisposable
                         throw new InvalidConstructorException("Bad constructor");
                     }
                 case "ExternalCall":
-                    instance = data.GetProperty("instance");
-                    callId = data.GetProperty("call_id").GetUInt64();
-                    string attrName = data.GetProperty("attribute").GetString();
+                    {
 
-                    JsonElement? jArgs = null;
-                    if (data.TryGetProperty("data", out JsonElement externalCallData) && externalCallData.ValueKind != JsonValueKind.Null)
-                    {
-                        jArgs = data.GetProperty("args");
+                        instance = data.GetProperty("instance");
+                        callId = data.GetProperty("call_id").GetUInt64();
+                        string attrName = data.GetProperty("attribute").GetString();
+
+                        JsonElement? jArgs;
+                        if (data.TryGetProperty("args", out JsonElement args) && args.ValueKind != JsonValueKind.Null)
+                        {
+                            jArgs = args;
+                        }
+                        else {
+                            jArgs = null;
+                        }
+                        if (data.GetProperty("kwargs").ValueKind != JsonValueKind.Null)
+                        {
+                            // TODO: _Could_ we support this with named arguments?
+                            throw new InvalidCallException("Keyword arguments are not supported.");
+                        }
+                        HandleCall(attrName, jArgs, instance, callId);
+                        break;
                     }
-                    if (data.GetProperty("kwargs").ValueKind != JsonValueKind.Null)
-                    {
-                        // TODO: _Could_ we support this with named arguments?
-                        throw new InvalidCallException("Keyword arguments are not supported.");
-                    }
-                    HandleCall(attrName, jArgs, instance, callId);
-                    break;
                 case "ExternalIsa":
                     instance = data.GetProperty("instance");
                     callId = data.GetProperty("call_id").GetUInt64();
@@ -153,12 +159,14 @@ public class Query : IDisposable
                     Native.QuestionResult(_handle, callId, answer);
                     break;
                 case "ExternalOp":
-                    callId = data.GetProperty("call_id").GetUInt64();
-                    var args = data.GetProperty("args");
-                    answer = _host.Operator(data.GetProperty("operator").GetString(), _host.DeserializePolarList(args)) ? 1 : 0;
-                    Native.QuestionResult(_handle, callId, answer);
+                    {
+                        callId = data.GetProperty("call_id").GetUInt64();
+                        var args = data.GetProperty("args");
+                        answer = _host.Operator(data.GetProperty("operator").GetString(), _host.DeserializePolarList(args)) ? 1 : 0;
+                        Native.QuestionResult(_handle, callId, answer);
 
-                    break;
+                        break;
+                    }
                 case "NextExternal":
                     callId = data.GetProperty("call_id").GetUInt64();
                     JsonElement iterable = data.GetProperty("iterable");
@@ -215,7 +223,7 @@ public class Query : IDisposable
                     MethodInfo? method = type.GetMembers()
                         .Where(mi => mi.MemberType == MemberTypes.Method && mi.Name == attrName)
                         .Cast<MethodInfo>()
-                        .FirstOrDefault(mi => mi.GetParameters().Select(pi => pi.ParameterType).ToArray() == argTypes);
+                        .FirstOrDefault(mi => mi.GetParameters().Select(pi => pi.ParameterType).ToArray().SequenceEqual(argTypes));
                     if (method == null)
                     {
                         throw new InvalidCallException(type.Name, attrName, argTypes);

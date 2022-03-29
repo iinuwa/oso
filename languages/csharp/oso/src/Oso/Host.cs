@@ -50,9 +50,38 @@ public class Host
     /// <summary>
     /// Make an instance of a class from a <see cref="List&lt;object&gt;" /> of fields. 
     /// </summary>
-    internal void MakeInstance(string className, List<object> constructorArgs, ulong instanceId)
+    internal object MakeInstance(string className, List<object> constructorArgs, ulong instanceId)
     {
-        throw new NotImplementedException();
+
+        // TODO: PolarRuntimeException -> UnregisteredClassError
+        if (!_classes.TryGetValue(className, out Type t)) throw new OsoException($"Unregistered class exception: {className}");
+        var argTypes = constructorArgs.Select(o => o.GetType()).ToArray();
+
+        var constructor = t.GetConstructors().FirstOrDefault(c => {
+            var paramTypes = c.GetParameters().Select(p => p.ParameterType).ToArray();
+            if (argTypes.Count() == paramTypes.Count())
+            {
+                for (int i = 0; i < paramTypes.Count(); i++)
+                {
+                    if (!paramTypes[i].IsAssignableFrom(argTypes[i])) return false;
+                }
+                return true;
+            }
+            return false;
+        });
+
+        if (constructor == null) throw new OsoException($"Missing constructor for class {className}");
+        object instance;
+        try
+        {
+            instance = constructor.Invoke(constructorArgs.ToArray());
+        }
+        catch (Exception e)
+        {
+            throw new OsoException($"constructor on class `{className}`: {e.Message}", e);
+        }
+        CacheInstance(instance, instanceId);
+        return instance;
     }
 
     /// <summary>

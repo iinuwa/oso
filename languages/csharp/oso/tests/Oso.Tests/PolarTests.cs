@@ -245,5 +245,189 @@ public class PolarTests
         Assert.Equal(new List<Dictionary<string, object>>() { new () }, polar.QueryRule("null", args: new object?[] { null }).Results);
         Assert.False(polar.QueryRule("null", bindings: new ()).Results.Any());
     }
+    #endregion
+    #region Test Externals
+
+    [Fact]
+    public void TestRegisterAndMakeClass()
+    {
+        var polar = new Polar();
+        polar.RegisterClass(typeof(MyClass), "MyClass");
+        MyClass instance = (MyClass)polar.Host.MakeInstance("MyClass", new() { "testName", 1 }, 0UL);
+        Assert.Equal("testName", instance.Name);
+        Assert.Equal(1, instance.Id);
+        // TODO: test that errors when given invalid constructor
+        // TODO: test that errors when registering same class twice
+        // TODO: test that errors if same alias used twice
+        // TODO: test inheritance
+    }
+
+  [Fact]
+  public void TestDuplicateRegistration()
+    {
+        var polar = new Polar();
+        polar.RegisterClass(typeof(MyClass), "MyClass");
+        var exception = Assert.Throws<OsoException>(() => polar.RegisterClass(typeof(MyClass), "MyClass"));
+        Assert.Equal("Attempted to alias MyClass as Oso.Tests.MyClass, but Oso.Tests.MyClass already has that alias.", exception.Message);
+        // TODO: Should exceptions end with periods?
+  }
+
+    [Fact]
+    public void TestMakeInstanceFromPolar()
+    {
+        var polar = new Polar();
+        polar.RegisterClass(typeof(MyClass), "MyClass");
+        polar.Load("f(x) if x = new MyClass(\"test\", 1);");
+        Query query = polar.NewQuery("f(x)", 0);
+        MyClass ret = (MyClass)query.Results.First()["x"];
+        Assert.Equal("test", ret.Name);
+        Assert.Equal(1, ret.Id);
+    }
+
+    /*
+        [Fact]
+        public void TestNoKeywordArgs()
+        {
+            var polar = new Polar();
+            polar.RegisterConstant(true, "MyClass");
+            var e1 = Assert.Throws<OsoException>(() => polar.NewQuery("x = new MyClass(\"test\", id: 1)", 0).Results.First());
+            Assert.Equal("Failed to instantiate external class MyClass; named arguments are not supported in .NET", e1.Message);
+            var e2 = Assert.Throws<OsoException>(() => polar.NewQuery("x = (new MyClass(\"test\", 1)).Foo(\"test\", id: 1)", 0).Results.First());
+            Assert.Equal("Invalid call `{callName}` on class {className}, with argument types `{argTypes}`", e2.Message);
+        }
+        */
+
+    [Fact]
+    public void TestExternalCall()
+    {
+        // Test get attribute
+        var polar = new Polar();
+        polar.RegisterClass(typeof(MyClass), "MyClass");
+        polar.Load("id(x) if x = new MyClass(\"test\", 1).Id;");
+        var expected1 = new List<Dictionary<string, object>>() { new() { { "x", (object)1 } } };
+        Assert.True(
+            polar.NewQuery("id(x)", 0).Results.First().SequenceEqual(expected1.First()),
+            "Failed to get attribute on external instance.");
+
+        polar.ClearRules();
+
+        // Test call method
+        polar.Load("method(x) if x = new MyClass(\"test\", 1).MyMethod(\"hello world\");");
+        var expected2 = new Dictionary<string, object>() { { "x", "hello world" } };
+        Assert.True(
+            polar.NewQuery("method(x)", 0).Results.First().SequenceEqual(expected2),
+            "Failed to get attribute on external instance.");
+    }
+
+/*
+  [Fact]
+  public void TestReturnJavaInstanceFromCall()
+    {
+    MyClass c = new MyClass("test", 1);
+    p.loadStr("test(c: MyClass) if x = c.mySubClass(c.name, c.id) and x.id = c.id;");
+    Assert.False(p.queryRule("test", c).results().isEmpty());
+  }
+
+  [Fact]
+  public void TestEnumerationCallResults()
+    {
+    MyClass c = new MyClass("test", 1);
+    p.loadStr("test(c: MyClass, x) if x in c.myEnumeration();");
+    List<HashMap<String, Object>> results = p.queryRule("test", c, new Variable("x")).results();
+    Assert.True(results.equals(List.of(Map.of("x", "hello"), Map.of("x", "world"))));
+  }
+
+  [Fact]
+  public void TestStringMethods()
+    {
+    p.loadStr("f(x) if x.length() = 3;");
+    Assert.False(p.query("f(\"oso\")").results().isEmpty());
+    Assert.True(p.query("f(\"notoso\")").results().isEmpty());
+  }
+
+  [Fact]
+  public void TestListMethods()
+    {
+    p.loadStr("f(x) if x.size() = 3;");
+    Assert.False(p.queryRule("f", new ArrayList(Arrays.asList(1, 2, 3))).results().isEmpty());
+    Assert.True(p.queryRule("f", new ArrayList(Arrays.asList(1, 2, 3, 4))).results().isEmpty());
+
+    Assert.False(p.queryRule("f", new int[] {1, 2, 3}).results().isEmpty());
+    Assert.True(p.queryRule("f", new int[] {1, 2, 3, 4}).results().isEmpty());
+  }
+
+  [Fact]
+  public void TestExternalIsa()
+    {
+    p.loadStr("f(a: MyClass, x) if x = a.id;");
+    List<HashMap<String, Object>> result =
+        p.queryRule("f", new MyClass("test", 1), new Variable("x")).results();
+    Assert.True(result.equals(List.of(Map.of("x", 1))));
+    p.clearRules();
+
+    p.loadStr("f(a: MySubClass, x) if x = a.id;");
+    result = p.queryRule("f", new MyClass("test", 1), new Variable("x")).results();
+    Assert.True(result.isEmpty(), "Failed to filter rules by specializers.");
+    p.clearRules();
+
+    p.loadStr("f(a: OtherClass, x) if x = a.id;");
+    assertThrows(
+        Exceptions.UnregisteredClassError.class,
+        () -> p.queryRule("f", new MyClass("test", 1), new Variable("x")).results());
+  }
+
+  [Fact]
+  public void TestExternalIsSubSpecializer()
+    {
+    String policy = "f(_: MySubClass, x) if x = 1;\n" + "f(_: MyClass, x) if x = 2;";
+    p.loadStr(policy);
+    List<HashMap<String, Object>> result =
+        p.queryRule("f", new MySubClass("test", 1), new Variable("x")).results();
+    Assert.True(
+        result.equals(List.of(Map.of("x", 1), Map.of("x", 2))),
+        "Failed to order rules based on specializers.");
+
+    result = p.queryRule("f", new MyClass("test", 1), new Variable("x")).results();
+    Assert.True(
+        result.equals(List.of(Map.of("x", 2))), "Failed to order rules based on specializers.");
+  }
+
+  [Fact]
+  public void TestExternalUnify()
+    {
+    Assert.False(p.query("new MyClass(\"foo\", 1) = new MyClass(\"foo\", 1)").results().isEmpty());
+    Assert.True(p.query("new MyClass(\"foo\", 1) = new MyClass(\"foo\", 2)").results().isEmpty());
+    Assert.True(p.query("new MyClass(\"foo\", 1) = new MyClass(\"bar\", 1)").results().isEmpty());
+    Assert.True(p.query("new MyClass(\"foo\", 1) = {foo: 1}").results().isEmpty());
+  }
+
+  [Fact]
+  public void TestExternalInternalUnify()
+    {
+    Assert.False(p.query("new String(\"foo\") = \"foo\"").results().isEmpty());
+  }
+
+  [Fact]
+  public void TestReturnListFromCall()
+    {
+    p.loadStr("test(c: MyClass) if \"hello\" in c.myList();");
+    MyClass c = new MyClass("test", 1);
+    Assert.False(p.queryRule("test", c).results().isEmpty());
+  }
+
+  [Fact]
+  public void TestClassMethods()
+    {
+    p.loadStr("test(x) if x=1 and MyClass.myStaticMethod() = \"hello world\";");
+
+    Assert.False(p.query("test(1)").results().isEmpty());
+  }
+
+  [Fact]
+  public void TestExternalOp()
+    {
+    Assert.False(p.query("new String(\"foo\") == new String(\"foo\")").results().isEmpty());
+  }
+  */
 #endregion
 }

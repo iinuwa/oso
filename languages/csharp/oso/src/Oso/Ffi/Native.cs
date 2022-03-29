@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text.Json;
 
 namespace Oso.Ffi;
 internal static class Native
@@ -123,11 +124,46 @@ internal static class Native
     [DllImport(Polar, CharSet = CharSet.Ansi)]
     private extern static unsafe QueryResult* polar_new_query(PolarHandle polar_ptr, string query_str, uint trace);
 
-    internal static Query NewQuery(PolarHandle polar, Host host, string query, uint trace)
+    internal static Query NewQuery(PolarHandle polar, Host host, string queryString, uint trace)
     {
         unsafe
         {
-            return GetQueryResult(polar_new_query(polar, query, trace), host);
+            var queryPtr = polar_new_query(polar, queryString, trace);
+            ProcessMessages(polar);
+            return GetQueryResult(queryPtr, host);
+        }
+    }
+
+    private unsafe static void ProcessMessages(PolarHandle handle)
+    {
+        var message = GetStringResultOrDefault(polar_next_polar_message(handle));
+        while (message != null)
+        {
+            ProcessMessage(message);
+            message = GetStringResultOrDefault(polar_next_polar_message(handle));
+        }
+    }
+
+    private unsafe static void ProcessMessage(string messageStr)
+    {
+        try
+        {
+            var message = JsonDocument.Parse(messageStr).RootElement;
+            string kind = message.GetProperty("kind").GetString();
+            var msg = message.GetProperty("msg").GetString();
+            if ("Print".Equals(kind))
+            {
+                // TODO: Make this into a text stream or something.
+                Console.WriteLine(msg);
+            }
+            else if ("Warning".Equals(kind))
+            {
+                Console.WriteLine("[warning] {0}", msg);
+            }
+        }
+        catch (JsonException)
+        {
+            throw new OsoException(string.Format("Invalid JSON Message: {0}", messageStr));
         }
     }
 
@@ -433,6 +469,46 @@ internal static class Native
                 _ = result_free(ptr);
             }
         }
+    }
 
+    private static unsafe string? GetStringResultOrDefault(StringResult* ptr)
+    {
+        unsafe
+        {
+            try
+            {
+                if (ptr->error == IntPtr.Zero)
+                {
+                    // TODO: Is this efficient? This is often returning UTF-8 JSON, so we're
+                    // copying and encoding to UTF-16, then re-encoding backk to UTF-8 to parse the JSON.
+                    // Maybe this should be kept as a byte[] instead.
+                    try
+                    {
+                        return Marshal.PtrToStringAnsi(ptr->result);
+                    }
+                    finally
+                    {
+                        _ = string_free(ptr->result);
+                    }
+                }
+                else
+                {
+                    if (ptr->result == IntPtr.Zero)
+                    {
+                        var r = Marshal.PtrToStringAnsi(ptr->result);
+                        var e = Marshal.PtrToStringAnsi(ptr->error);
+                        throw new OsoException($"Internal error: both result and error pointers are non-null: Result: {r}. Error: {e}");
+                    }
+
+                    string error = Marshal.PtrToStringAnsi(ptr->error)!;
+                    _ = string_free(ptr->error);
+                    throw new OsoException(error);
+                }
+            }
+            finally
+            {
+                _ = result_free(ptr);
+            }
+        }
     }
 }

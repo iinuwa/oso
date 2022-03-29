@@ -37,7 +37,7 @@ public class InvalidCallException : PolarRuntimeException
     public InvalidCallException() { }
     public InvalidCallException(string? message) : base(message) { }
     public InvalidCallException(string? message, Exception? inner) : base(message, inner) { }
-    public InvalidCallException(string className, string callName, params Type[] argTypes) : base($"Invalid call {callName} on class {className}, with argument types `{argTypes}`") { }
+    public InvalidCallException(string className, string callName, params Type[] argTypes) : base($"Invalid call {callName} on class {className}, with argument types `{string.Join(", ", argTypes.Select(t => t.Name))}`") { }
 }
 
 public class InvalidConstructorException : PolarRuntimeException
