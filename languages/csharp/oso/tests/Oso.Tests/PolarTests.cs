@@ -71,7 +71,7 @@ public class PolarTests
     [Fact]
     public void TestQueryPredWithObject()
     {
-        // test query with Java Object
+        // test query with .NET Object
         var polar = new Polar();
         polar.RegisterClass(typeof(MyClass), "MyClass");
         polar.Load("g(x) if x.Id = 1;");
@@ -174,25 +174,25 @@ public class PolarTests
         Assert.Equal(m, o);
     }
 
-/*
     [Fact]
     public void TestJavaClassFFIRoundTrip()
     {
+        var polar = new Polar();
         MyClass instance = new MyClass("test", 1);
-        JsonElement polar = p.host.toPolarTerm(instance);
-        object java = p.host.toJava(polar);
-        Assert.Equal(instance, java);
+        JsonElement p = polar.Host.SerializePolarTerm(instance);
+        object o = polar.Host.ParsePolarTerm(p);
+        Assert.Equal(instance, o);
     }
 
     [Fact]
     public void TestPredicateFFIRoundTrip()
     {
-        Predicate pred = new Predicate("name", List.of(1, "hello"));
-        JsonElement polar = p.host.toPolarTerm(pred);
-        object java = p.host.toJava(polar);
-        Assert.Equal(pred, java);
+        var polar = new Polar(); 
+        Predicate pred = new Predicate("name", new List<object>() { 1, "hello" });
+        JsonElement t = polar.Host.SerializePolarTerm(pred);
+        object o = polar.Host.ParsePolarTerm(t);
+        Assert.Equal(pred, o);
     }
-    */
 
     [Fact]
     public void TestNaN()
