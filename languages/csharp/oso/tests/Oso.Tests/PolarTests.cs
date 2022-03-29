@@ -27,6 +27,7 @@ public class MySubClass : MyClass
     public MySubClass(string name, int id) : base(name, id) { }
 }
 
+#region Test Query
 public class PolarTests
 {
     [Fact]
@@ -38,6 +39,22 @@ public class PolarTests
         // TODO: Are any of these strings actually nullable? If not, we should go back and mark them as non-nullable.
         var result = query.Results.ToList()[0];
         Assert.Equal(new() { { "x", 1 } }, result);
+    }
+
+    [Fact]
+    public void TestInlineQueries()
+    {
+        var polar = new Polar();
+        polar.Load("f(1); ?= f(1);");
+        polar.ClearRules();
+        try
+        {
+            var exception = Assert.Throws<OsoException>(() => polar.Load("f(1); ?= f(2);"));
+        }
+        catch (Exception e)
+        {
+            throw new Exception("Expected inline query to fail but it didn't.", e);
+        }
     }
 
     [Fact]
@@ -83,7 +100,8 @@ public class PolarTests
         }
     }
 
-    /*** TEST FFI CONVERSIONS ***/
+#endregion
+#region Test FFI Conversions
 
     [Fact]
     public void TestBoolFFIRoundTrip()
@@ -227,4 +245,5 @@ public class PolarTests
         Assert.Equal(new List<Dictionary<string, object>>() { new () }, polar.QueryRule("null", args: new object?[] { null }).Results);
         Assert.False(polar.QueryRule("null", bindings: new ()).Results.Any());
     }
+#endregion
 }

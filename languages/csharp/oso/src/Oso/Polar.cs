@@ -38,7 +38,20 @@ public class Polar : IDisposable
     {
         // TODO
         string sourcesJson = $@"[{{""src"":""{source}"", ""filename"": null}}]"; // JsonSerializer.Serialize(sources.Select(source => new KeyValuePair<string, string>("src", source)));
+        // TODO: Host.RegisterMros();
         Native.Load(_handle, sourcesJson);
+        // TODO: Move this to Native
+        var nextQuery = Native.NextInlineQuery(_handle, Host);
+        while (nextQuery != null)
+        {
+            if (!nextQuery.Results.Any())
+            {
+                string? querySource = nextQuery.Source;
+                throw new OsoException($"Inline query failed: {querySource}");
+            }
+            nextQuery.Dispose();
+            nextQuery = Native.NextInlineQuery(_handle, Host);
+        }
     }
 
     // struct polar_CResult_c_void *polar_clear_rules(struct polar_Polar *polar_ptr);
@@ -75,19 +88,6 @@ public class Polar : IDisposable
         Native.RegisterMro(_handle, name, mro);
     }
 
-    // struct polar_Query *polar_next_inline_query(struct polar_Polar *polar_ptr, uint32_t trace);
-    // TODO: Make this an iterator?
-    /*
-    public IEnumerator<Query> InlineQueries(int trace)
-    {
-
-    }
-    */
-    public Query? NextInlineQuery(uint trace)
-    {
-        var handle = Native.polar_next_inline_query(_handle, trace);
-        return (handle != null) ? new Query(handle, Host) : null;
-    }
 
     /*
     struct polar_CResult_Query *polar_new_query_from_term(struct polar_Polar *polar_ptr,

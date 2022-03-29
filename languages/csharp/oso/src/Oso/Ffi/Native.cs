@@ -76,7 +76,14 @@ internal static class Native
 
     // struct polar_Query *polar_next_inline_query(struct polar_Polar *polar_ptr, uint32_t trace);
     [DllImport(Polar)]
-    internal extern static QueryHandle polar_next_inline_query(PolarHandle polar_ptr, uint trace);
+    private extern static QueryHandle polar_next_inline_query(PolarHandle polar_ptr, uint trace);
+
+    internal static Query? NextInlineQuery(PolarHandle polarHandle, Host host)
+    {
+        var queryHandle = polar_next_inline_query(polarHandle, 0);
+        // TODO: processMessages();
+        return (!queryHandle.IsInvalid) ? new Query(queryHandle, host) : null;
+    }
 
     /**
       *  struct polar_CResult_Query *polar_new_query_from_term(struct polar_Polar *polar_ptr,

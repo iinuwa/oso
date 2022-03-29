@@ -370,7 +370,7 @@ public class Query : IDisposable
     }
 
     // struct polar_CResult_c_char *polar_query_source_info(struct polar_Query *query_ptr);
-    public string? SourceInfo
+    internal string? Source
     {
         get => Native.QuerySourceInfo(_handle);
     }
