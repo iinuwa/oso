@@ -524,6 +524,68 @@ public class PolarTests
         }
     }
 
+    [Fact]
+    public void TestLoadFilePassesFilename()
+    {
+        string filename = $"error-{Path.GetRandomFileName()}.polar";
+        string path = Path.Join(Path.GetTempPath(), filename);
+        var tempFile = File.Open(path, FileMode.Create);
+        tempFile.WriteByte((byte)';');
+        tempFile.Close();
+        try
+        {
+            var polar = new Polar();
+            var exception = Assert.Throws<OsoException>(() => polar.LoadFiles(path));
+            Assert.StartsWith($"Unrecognized token: did not expect to find the token ';' at line 1, column 1 of file {path}:", exception.Message);
+        }
+        catch (ThrowsException)
+        {
+            throw new XunitException("Failed to pass filename across FFI boundary.");
+        }
+        File.Delete(path);
+  }
+
+  [Fact]
+  public void TestLoadFileIdempotent()
+    {
+        var polar = new Polar();
+        var path = Path.Join(TestPath, "Resources", "test.polar");
+        polar.LoadFiles(path);
+        var exception = Assert.Throws<OsoException>(() => polar.LoadFiles(path));
+        Assert.Equal("Cannot load additional Polar code -- all Polar code must be loaded at the same time.", exception.Message);
+        List<Dictionary<string, object>> expected = new()
+        {
+            new() { { "x", 1 } },
+            new() { { "x", 2 } },
+            new() { { "x", 3 } },
+        };
+        try
+        {
+            Assert.Equal(expected, polar.NewQuery("f(x)", 0).Results, new ResultsComparer());
+        }
+        catch (XunitException ex)
+        {
+            throw new Exception(ex.GetType().ToString() + "loadFile behavior is not idempotent.");
+        }
+  }
+
+    [Fact]
+    public void TestLoadMultipleFiles()
+    {
+        var polar = new Polar();
+
+        var path1 = Path.Join(TestPath, "Resources", "test.polar");
+        var path2 = Path.Join(TestPath, "Resources", "test2.polar");
+        polar.LoadFiles(new [] { path1, path2 });
+        List<Dictionary<string, object>> expected = new()
+        {
+            new() { { "x", 1 } },
+            new() { { "x", 2 } },
+            new() { { "x", 3 } },
+        };
+        Assert.Equal(expected, polar.NewQuery("f(x)", 0).Results, new ResultsComparer());
+        Assert.Equal(expected, polar.NewQuery("g(x)", 0).Results, new ResultsComparer());
+    }
   #endregion
 }
 internal class ResultsComparer : IEqualityComparer<IEnumerable<Dictionary<string, object>>>
