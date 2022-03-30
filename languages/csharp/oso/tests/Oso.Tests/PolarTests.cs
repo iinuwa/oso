@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using Xunit;
 namespace Oso.Tests;
@@ -29,14 +31,15 @@ public record class MySubClass : MyClass
     public MySubClass(string name, int id) : base(name, id) { }
 }
 
-#region Test Query
 public class PolarTests
 {
+    private static readonly string TestPath = Path.Join(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!, "..", "..", "..");
+    #region Test Query
     [Fact]
     public void TestLoadAndQueryStr()
     {
         var polar = new Polar();
-        polar.Load("f(1);");
+        polar.LoadStr("f(1);");
         Query query = polar.NewQuery("f(x)", 0);
         // TODO: Are any of these strings actually nullable? If not, we should go back and mark them as non-nullable.
         var result = query.Results.ToList()[0];
@@ -47,11 +50,11 @@ public class PolarTests
     public void TestInlineQueries()
     {
         var polar = new Polar();
-        polar.Load("f(1); ?= f(1);");
+        polar.LoadStr("f(1); ?= f(1);");
         polar.ClearRules();
         try
         {
-            var exception = Assert.Throws<OsoException>(() => polar.Load("f(1); ?= f(2);"));
+            var exception = Assert.Throws<OsoException>(() => polar.LoadStr("f(1); ?= f(2);"));
         }
         catch (Exception e)
         {
@@ -64,7 +67,7 @@ public class PolarTests
     {
         // test basic query
         var polar = new Polar();
-        polar.Load("f(a, b) if a = b;");
+        polar.LoadStr("f(a, b) if a = b;");
         Assert.True(polar.QueryRule("f", 1, 1).Results.Any(), "Basic predicate query failed.");
         Assert.False(
             polar.QueryRule("f", 1, 2).Results.Any(),
@@ -76,7 +79,7 @@ public class PolarTests
         // test query with .NET Object
         var polar = new Polar();
         polar.RegisterClass(typeof(MyClass), "MyClass");
-        polar.Load("g(x) if x.Id = 1;");
+        polar.LoadStr("g(x) if x.Id = 1;");
         Assert.True(
             polar.QueryRule("g", new MyClass("test", 1)).Results.Any(),
             "Predicate query with .NET object failed.");
@@ -90,7 +93,7 @@ public class PolarTests
     {
         // test query with Variable
         var polar = new Polar();
-        polar.Load("f(a, b) if a = b;");
+        polar.LoadStr("f(a, b) if a = b;");
         var expected = new List<Dictionary<string, object>>() { new() { { "result", 1 } } };
         try
         {
@@ -102,8 +105,8 @@ public class PolarTests
         }
     }
 
-#endregion
-#region Test FFI Conversions
+    #endregion
+    #region Test FFI Conversions
 
     [Fact]
     public void TestBoolFFIRoundTrip()
@@ -240,7 +243,7 @@ public class PolarTests
     public void TestNil()
     {
         var polar = new Polar();
-        polar.Load("null(nil);");
+        polar.LoadStr("null(nil);");
 
         List<Dictionary<string, object>> expected = new () { new () { { "x", null! } } };
         Assert.Equal(polar.NewQuery("null(x)", 0).Results, expected);
@@ -279,7 +282,7 @@ public class PolarTests
     {
         var polar = new Polar();
         polar.RegisterClass(typeof(MyClass), "MyClass");
-        polar.Load("f(x) if x = new MyClass(\"test\", 1);");
+        polar.LoadStr("f(x) if x = new MyClass(\"test\", 1);");
         Query query = polar.NewQuery("f(x)", 0);
         MyClass ret = (MyClass)query.Results.First()["x"];
         Assert.Equal("test", ret.Name);
@@ -305,7 +308,7 @@ public class PolarTests
         // Test get attribute
         var polar = new Polar();
         polar.RegisterClass(typeof(MyClass), "MyClass");
-        polar.Load("id(x) if x = new MyClass(\"test\", 1).Id;");
+        polar.LoadStr("id(x) if x = new MyClass(\"test\", 1).Id;");
         var expected1 = new List<Dictionary<string, object>>() { new() { { "x", (object)1 } } };
         Assert.True(
             polar.NewQuery("id(x)", 0).Results.First().SequenceEqual(expected1.First()),
@@ -314,7 +317,7 @@ public class PolarTests
         polar.ClearRules();
 
         // Test call method
-        polar.Load("method(x) if x = new MyClass(\"test\", 1).MyMethod(\"hello world\");");
+        polar.LoadStr("method(x) if x = new MyClass(\"test\", 1).MyMethod(\"hello world\");");
         var expected2 = new Dictionary<string, object>() { { "x", "hello world" } };
         Assert.True(
             polar.NewQuery("method(x)", 0).Results.First().SequenceEqual(expected2),
@@ -327,7 +330,7 @@ public class PolarTests
         var polar = new Polar();
         polar.RegisterClass(typeof(MyClass), "MyClass");
         MyClass c = new MyClass("test", 1);
-        polar.Load("test(c: MyClass) if x = c.MySubClass(c.Name, c.Id) and x.Id = c.Id;");
+        polar.LoadStr("test(c: MyClass) if x = c.MySubClass(c.Name, c.Id) and x.Id = c.Id;");
         Assert.NotEmpty(polar.QueryRule("test", c).Results);
     }
 
@@ -337,7 +340,7 @@ public class PolarTests
         var polar = new Polar();
         polar.RegisterClass(typeof(MyClass), "MyClass");
         MyClass c = new MyClass("test", 1);
-        polar.Load("test(c: MyClass, x) if x in c.MyEnumeration();");
+        polar.LoadStr("test(c: MyClass, x) if x in c.MyEnumeration();");
         var results = polar.QueryRule("test", c, new Variable("x")).Results;
         List<Dictionary<string, object>> expected = new()
         {
@@ -352,7 +355,7 @@ public class PolarTests
     {
         var polar = new Polar();
         // TODO: Is string.Length() defined in Polar, or in the Host?
-        polar.Load("f(x) if x.Length = 3;");
+        polar.LoadStr("f(x) if x.Length = 3;");
         Assert.NotEmpty(polar.NewQuery("f(\"oso\")", 0).Results);
         Assert.Empty(polar.NewQuery("f(\"notoso\")", 0).Results);
     }
@@ -363,7 +366,7 @@ public class PolarTests
             var polar = new Polar();
             // TODO: is size() part of Polar, or just a reference to .NET List objects?
             // polar.Load("f(x) if x.size() = 3;");
-            polar.Load("f(x) if x.Count = 3;");
+            polar.LoadStr("f(x) if x.Count = 3;");
             Assert.True(polar.QueryRule("f", new List<int> { 1, 2, 3 }).Results.Any());
             Assert.False(polar.QueryRule("f", new List<int> { 1, 2, 3, 4 }).Results.Any());
 
@@ -377,18 +380,18 @@ public class PolarTests
         var polar = new Polar();
         polar.RegisterClass(typeof(MyClass), "MyClass");
         polar.RegisterClass(typeof(MySubClass), "MySubClass");
-        polar.Load("f(a: MyClass, x) if x = a.Id;");
+        polar.LoadStr("f(a: MyClass, x) if x = a.Id;");
         var expected = new List<Dictionary<string, object>>() { new() { { "x", 1 } } };
         var results = polar.QueryRule("f", new MyClass("test", 1), new Variable("x")).Results;
         Assert.Equal(expected, results, new ResultsComparer());
         polar.ClearRules();
 
-        polar.Load("f(a: MySubClass, x) if x = a.Id;");
+        polar.LoadStr("f(a: MySubClass, x) if x = a.Id;");
         results = polar.QueryRule("f", new MyClass("test", 1), new Variable("x")).Results;
         Assert.False(results.Any(), "Failed to filter rules by specializers.");
         polar.ClearRules();
 
-        polar.Load("f(a: OtherClass, x) if x = a.Id;");
+        polar.LoadStr("f(a: OtherClass, x) if x = a.Id;");
         var exception = Assert.Throws<OsoException>(() => polar.QueryRule("f", new MyClass("test", 1), new Variable("x")).Results.First());
         Assert.Equal("Unregistered class: OtherClass", exception.Message);
     }
@@ -400,7 +403,7 @@ public class PolarTests
         polar.RegisterClass(typeof(MyClass), "MyClass");
         polar.RegisterClass(typeof(MySubClass), "MySubClass");
         string policy = "f(_: MySubClass, x) if x = 1;\n" + "f(_: MyClass, x) if x = 2;";
-        polar.Load(policy);
+        polar.LoadStr(policy);
         var results = polar.QueryRule("f", new MySubClass("test", 1), new Variable("x")).Results;
         var expected = new List<Dictionary<string, object>>
         {
@@ -438,7 +441,7 @@ public class PolarTests
     public void TestReturnListFromCall()
     {
         var polar = new Polar();
-        polar.Load("test(c: MyClass) if \"hello\" in c.MyList();");
+        polar.LoadStr("test(c: MyClass) if \"hello\" in c.MyList();");
         polar.RegisterClass(typeof(MyClass));
         MyClass c = new MyClass("test", 1);
         Assert.True(polar.QueryRule("test", c).Results.Any());
@@ -449,7 +452,7 @@ public class PolarTests
     {
         var polar = new Polar();
         polar.RegisterClass(typeof(MyClass));
-        polar.Load("test(x) if x=1 and MyClass.MyStaticMethod() = \"hello world\";");
+        polar.LoadStr("test(x) if x=1 and MyClass.MyStaticMethod() = \"hello world\";");
         Assert.True(polar.NewQuery("test(1)", 0).Results.Any());
     }
 
@@ -466,7 +469,7 @@ public class PolarTests
     {
         var polar = new Polar();
         string rule = "f(x) if x = 18446744073709551616;";
-        var e = Assert.Throws<OsoException>(() => polar.Load(rule));
+        var e = Assert.Throws<OsoException>(() => polar.LoadStr(rule));
         Assert.StartsWith("Integer overflow: '18446744073709551616' caused an integer overflow at line 1, column 13", e.Message);
     }
 
@@ -475,7 +478,7 @@ public class PolarTests
     {
         var polar = new Polar();
         string rule = "f(x) if x = \"This is not\n allowed\"";
-        var e = Assert.Throws<OsoException>(() => polar.Load(rule));
+        var e = Assert.Throws<OsoException>(() => polar.LoadStr(rule));
         // TODO: this is a wacky message
         Assert.StartsWith("Invalid token character: '\\n' is not a valid character. Found in This is not at line 1, column 25", e.Message);
     }
@@ -485,11 +488,27 @@ public class PolarTests
     {
         var polar = new Polar();
         string rule = "1";
-        var e = Assert.Throws<OsoException>(() => polar.Load(rule));
+        var e = Assert.Throws<OsoException>(() => polar.LoadStr(rule));
         Assert.StartsWith("Unrecognized token: did not expect to find the token '1' at line 1, column 1", e.Message);
     }
     #endregion
+    #region Test Loading
+    [Fact]
+    public void TestLoadFile()
+    {
+        var polar = new Polar();
+        polar.LoadFiles(Path.Join(TestPath, "Resources", "test.polar"));
+        List<Dictionary<string, object>> expected = new()
+        {
+            new() { { "x", 1 } },
+            new() { { "x", 2 } },
+            new() { { "x", 3 } },
+        };
+        Assert.Equal(expected, polar.NewQuery("f(x)", 0).Results, new ResultsComparer());
+    }
 
+
+  #endregion
 }
 internal class ResultsComparer : IEqualityComparer<IEnumerable<Dictionary<string, object>>>
 {

@@ -34,19 +34,52 @@ public class Polar : IDisposable
         Native.Load(_handle, sourcesJson);
     }
 
-    public void Load(string source)
+    public void LoadStr(string source)
     {
-        var stream = new MemoryStream();
-        var writer = new Utf8JsonWriter(stream);
-        writer.WriteStartArray();
-        writer.WriteStartObject();
-        writer.WriteString("src", source);
-        writer.WriteNull("filename");
-        writer.WriteEndObject();
-        writer.WriteEndArray();
-        writer.Flush();
+        Load(new Source[] { new(source) });
+    }
 
-        string sourcesJson = Encoding.UTF8.GetString(stream.ToArray()!);
+    public void LoadFiles(IEnumerable<string> filenames)
+    {
+        if (!filenames.Any()) return;
+
+        var errors = new List<OsoException>();
+        var sources = new List<Source>();
+        foreach (var filename in filenames)
+        {
+            var ext = Path.GetExtension(filename);
+            if (ext == null || ext != ".polar")
+            {
+                errors.Add(new OsoException($"Polar file extension missing: {filename}"));
+                continue;
+            }
+
+            try
+            {
+                string contents = File.ReadAllText(filename);
+                sources.Add(new Source(contents, filename));
+            }
+            catch (Exception ex) when (ex is DirectoryNotFoundException || ex is FileNotFoundException)
+            {
+                errors.Add(new OsoException($"Polar file not found: {filename}", ex));
+            }
+            catch (Exception ex)
+            {
+                throw new OsoException($"Failed to load Polar file {filename}", ex);
+            }
+        }
+        if (errors.Any()) throw new OsoException("Failed to load specified files", new AggregateException(errors));
+        Load(sources);
+    }
+
+    public void LoadFiles(params string[] filenames)
+    {
+        LoadFiles((IEnumerable<string>)filenames);
+    }
+
+    private void Load(IEnumerable<Source> sources)
+    {
+        string sourcesJson = JsonSerializer.Serialize(sources);
         // TODO: Host.RegisterMros();
         Native.Load(_handle, sourcesJson);
         // TODO: Move this to Native
