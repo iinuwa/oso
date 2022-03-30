@@ -6,7 +6,7 @@ using System.Text.Json;
 using Xunit;
 namespace Oso.Tests;
 
-public class MyClass
+public record class MyClass
 {
     public string Name { get; set; }
     public int Id { get; set; }
@@ -24,7 +24,7 @@ public class MyClass
     public string? MyReturnNull() => null;
 }
 
-public class MySubClass : MyClass
+public record class MySubClass : MyClass
 {
     public MySubClass(string name, int id) : base(name, id) { }
 }
@@ -393,30 +393,39 @@ public class PolarTests
         Assert.Equal("Unregistered class: OtherClass", exception.Message);
     }
 
-  [Fact]
-  public void TestExternalIsSubSpecializer()
+    [Fact]
+    public void TestExternalIsSubSpecializer()
     {
-    String policy = "f(_: MySubClass, x) if x = 1;\n" + "f(_: MyClass, x) if x = 2;";
-    p.loadStr(policy);
-    List<HashMap<String, Object>> result =
-        p.queryRule("f", new MySubClass("test", 1), new Variable("x")).results();
-    Assert.True(
-        result.equals(List.of(Map.of("x", 1), Map.of("x", 2))),
-        "Failed to order rules based on specializers.");
+        var polar = new Polar();
+        polar.RegisterClass(typeof(MyClass), "MyClass");
+        polar.RegisterClass(typeof(MySubClass), "MySubClass");
+        string policy = "f(_: MySubClass, x) if x = 1;\n" + "f(_: MyClass, x) if x = 2;";
+        polar.Load(policy);
+        var results = polar.QueryRule("f", new MySubClass("test", 1), new Variable("x")).Results;
+        var expected = new List<Dictionary<string, object>>
+        {
+            new() { { "x", 1 } },
+            new() { { "x", 2 } }
+        };
+        Assert.True(
+            new ResultsComparer().Equals(results, expected),
+            "Failed to order rules based on specializers.");
 
-    result = p.queryRule("f", new MyClass("test", 1), new Variable("x")).results();
-    Assert.True(
-        result.equals(List.of(Map.of("x", 2))), "Failed to order rules based on specializers.");
-  }
+        results = polar.QueryRule("f", new MyClass("test", 1), new Variable("x")).Results;
+        expected = new() { new() { { "x", 2 } } };
+        Assert.True(new ResultsComparer().Equals(results, expected), "Failed to order rules based on specializers.");
+    }
 
-  [Fact]
-  public void TestExternalUnify()
+    [Fact]
+    public void TestExternalUnify()
     {
-    Assert.False(p.query("new MyClass(\"foo\", 1) = new MyClass(\"foo\", 1)").results().isEmpty());
-    Assert.True(p.query("new MyClass(\"foo\", 1) = new MyClass(\"foo\", 2)").results().isEmpty());
-    Assert.True(p.query("new MyClass(\"foo\", 1) = new MyClass(\"bar\", 1)").results().isEmpty());
-    Assert.True(p.query("new MyClass(\"foo\", 1) = {foo: 1}").results().isEmpty());
-  }
+        var polar = new Polar();
+        polar.RegisterClass(typeof(MyClass), "MyClass");
+        Assert.True(polar.NewQuery("new MyClass(\"foo\", 1) = new MyClass(\"foo\", 1)", 0).Results.Any());
+        Assert.False(polar.NewQuery("new MyClass(\"foo\", 1) = new MyClass(\"foo\", 2)", 0).Results.Any());
+        Assert.False(polar.NewQuery("new MyClass(\"foo\", 1) = new MyClass(\"bar\", 1)", 0).Results.Any());
+        Assert.False(polar.NewQuery("new MyClass(\"foo\", 1) = {foo: 1}", 0).Results.Any());
+    }
 
   [Fact]
   public void TestExternalInternalUnify()
