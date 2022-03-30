@@ -394,7 +394,9 @@ internal static class Native
                 }
                 else
                 {
-                    throw new OsoException(Marshal.PtrToStringAnsi(ptr->error));
+                    string error = Marshal.PtrToStringAnsi(ptr->error)!;
+                    _ = string_free(ptr->error);
+                    throw OsoException.ParseError(error);
                 }
             }
             finally
@@ -418,9 +420,16 @@ internal static class Native
                 }
                 else
                 {
+                    if (ptr->result != IntPtr.Zero)
+                    {
+                        var r = Marshal.PtrToStringAnsi(ptr->result);
+                        var e = Marshal.PtrToStringAnsi(ptr->error);
+                        throw new OsoException($"Internal error: both result and error pointers are non-null: Result: {r}. Error: {e}");
+                    }
+
                     string error = Marshal.PtrToStringAnsi(ptr->error)!;
                     _ = string_free(ptr->error);
-                    throw new OsoException(error);
+                    throw OsoException.ParseError(error);
                 }
             }
             finally
@@ -452,7 +461,7 @@ internal static class Native
                 }
                 else
                 {
-                    if (ptr->result == IntPtr.Zero)
+                    if (ptr->result != IntPtr.Zero)
                     {
                         var r = Marshal.PtrToStringAnsi(ptr->result);
                         var e = Marshal.PtrToStringAnsi(ptr->error);
@@ -461,7 +470,7 @@ internal static class Native
 
                     string error = Marshal.PtrToStringAnsi(ptr->error)!;
                     _ = string_free(ptr->error);
-                    throw new OsoException(error);
+                    throw OsoException.ParseError(error);
                 }
             }
             finally
@@ -493,7 +502,7 @@ internal static class Native
                 }
                 else
                 {
-                    if (ptr->result == IntPtr.Zero)
+                    if (ptr->result != IntPtr.Zero)
                     {
                         var r = Marshal.PtrToStringAnsi(ptr->result);
                         var e = Marshal.PtrToStringAnsi(ptr->error);
@@ -502,7 +511,7 @@ internal static class Native
 
                     string error = Marshal.PtrToStringAnsi(ptr->error)!;
                     _ = string_free(ptr->error);
-                    throw new OsoException(error);
+                    throw OsoException.ParseError(error);
                 }
             }
             finally

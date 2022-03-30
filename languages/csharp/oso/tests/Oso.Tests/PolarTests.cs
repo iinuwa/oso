@@ -460,6 +460,36 @@ public class PolarTests
         Assert.True(polar.NewQuery("new String(\"foo\") == new String(\"foo\")", 0).Results.Any());
     }
     #endregion
+    #region Test Parsing
+    [Fact]
+    public void TestIntegerOverFlowError()
+    {
+        var polar = new Polar();
+        string rule = "f(x) if x = 18446744073709551616;";
+        var e = Assert.Throws<OsoException>(() => polar.Load(rule));
+        Assert.StartsWith("Integer overflow: '18446744073709551616' caused an integer overflow at line 1, column 13", e.Message);
+    }
+
+    [Fact]
+    public void TestInvalidTokenCharacter()
+    {
+        var polar = new Polar();
+        string rule = "f(x) if x = \"This is not\n allowed\"";
+        var e = Assert.Throws<OsoException>(() => polar.Load(rule));
+        // TODO: this is a wacky message
+        Assert.StartsWith("Invalid token character: '\\n' is not a valid character. Found in This is not at line 1, column 25", e.Message);
+    }
+
+    [Fact]
+    public void TestUnrecognizedTokenError()
+    {
+        var polar = new Polar();
+        string rule = "1";
+        var e = Assert.Throws<OsoException>(() => polar.Load(rule));
+        Assert.StartsWith("Unrecognized token: did not expect to find the token '1' at line 1, column 1", e.Message);
+    }
+    #endregion
+
 }
 internal class ResultsComparer : IEqualityComparer<IEnumerable<Dictionary<string, object>>>
 {
