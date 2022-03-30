@@ -434,22 +434,31 @@ public class PolarTests
         Assert.True(polar.NewQuery("new String(\"foo\") = \"foo\"", 0).Results.Any());
     }
 
-  [Fact]
-  public void TestReturnListFromCall()
+    [Fact]
+    public void TestReturnListFromCall()
     {
-    p.loadStr("test(c: MyClass) if \"hello\" in c.myList();");
-    MyClass c = new MyClass("test", 1);
-    Assert.False(p.queryRule("test", c).results().isEmpty());
-  }
+        var polar = new Polar();
+        polar.Load("test(c: MyClass) if \"hello\" in c.MyList();");
+        polar.RegisterClass(typeof(MyClass));
+        MyClass c = new MyClass("test", 1);
+        Assert.True(polar.QueryRule("test", c).Results.Any());
+    }
 
-  [Fact]
-  public void TestClassMethods()
+    [Fact]
+    public void TestClassMethods()
     {
-    p.loadStr("test(x) if x=1 and MyClass.myStaticMethod() = \"hello world\";");
+        var polar = new Polar();
+        polar.RegisterClass(typeof(MyClass));
+        polar.Load("test(x) if x=1 and MyClass.MyStaticMethod() = \"hello world\";");
+        Assert.True(polar.NewQuery("test(1)", 0).Results.Any());
+    }
 
-    Assert.False(p.query("test(1)").results().isEmpty());
-  }
-
+    [Fact(Skip = "TODO: .NET System.String doesn't have a constructor that takes a string")]
+    public void TestExternalOp()
+    {
+        var polar = new Polar();
+        Assert.True(polar.NewQuery("new String(\"foo\") == new String(\"foo\")", 0).Results.Any());
+    }
     #endregion
 }
 internal class ResultsComparer : IEqualityComparer<IEnumerable<Dictionary<string, object>>>
