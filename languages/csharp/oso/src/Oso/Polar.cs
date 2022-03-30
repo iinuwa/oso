@@ -18,14 +18,13 @@ public class Polar : IDisposable
         // Register global constants.
         RegisterConstant(null, "nil");
         // Register built-in classes.
-        /* TODO: 
-         * RegisterClass(typeof(bool), "Boolean");
-         * RegisterClass(typeof(int), "Integer");
-         * RegisterClass(typeof(double), "Float");
-         * RegisterClass(typeof(List), "List");
-         * RegisterClass(typeof(Dictionary<>), "Dictionary");
-         * RegisterClass(typeof(string), "String");
-         */
+        RegisterClass(typeof(bool), "Boolean");
+        RegisterClass(typeof(int), "Integer");
+        RegisterClass(typeof(double), "Float");
+        RegisterClass(typeof(List<>), "List");
+        RegisterClass(typeof(Dictionary<,>), "Dictionary");
+        RegisterClass(typeof(string), "String");
+        
     }
 
     // struct polar_CResult_c_void *polar_load(struct polar_Polar *polar_ptr, const char *sources);

@@ -286,18 +286,18 @@ public class PolarTests
         Assert.Equal(1, ret.Id);
     }
 
-    /*
-        [Fact]
-        public void TestNoKeywordArgs()
-        {
-            var polar = new Polar();
-            polar.RegisterConstant(true, "MyClass");
-            var e1 = Assert.Throws<OsoException>(() => polar.NewQuery("x = new MyClass(\"test\", id: 1)", 0).Results.First());
-            Assert.Equal("Failed to instantiate external class MyClass; named arguments are not supported in .NET", e1.Message);
-            var e2 = Assert.Throws<OsoException>(() => polar.NewQuery("x = (new MyClass(\"test\", 1)).Foo(\"test\", id: 1)", 0).Results.First());
-            Assert.Equal("Invalid call `{callName}` on class {className}, with argument types `{argTypes}`", e2.Message);
-        }
-        */
+    [Fact]
+    public void TestNoKeywordArgs()
+    {
+        var polar = new Polar();
+        // TODO: Is this supposed to be RegisterConstant?
+        // polar.RegisterConstant(true, "MyClass");
+        polar.RegisterClass(typeof(MyClass), "MyClass");
+        var e1 = Assert.Throws<OsoException>(() => polar.NewQuery("x = new MyClass(\"test\", id: 1)", 0).Results.First());
+        Assert.Equal("Failed to instantiate external class MyClass; named arguments are not supported in .NET", e1.Message);
+        var e2 = Assert.Throws<InvalidCallException>(() => polar.NewQuery("x = (new MyClass(\"test\", 1)).Foo(\"test\", id: 1)", 0).Results.First());
+        Assert.Equal("The .NET Oso library does not support keyword arguments", e2.Message);
+    }
 
     [Fact]
     public void TestExternalCall()
@@ -427,11 +427,12 @@ public class PolarTests
         Assert.False(polar.NewQuery("new MyClass(\"foo\", 1) = {foo: 1}", 0).Results.Any());
     }
 
-  [Fact]
-  public void TestExternalInternalUnify()
+    [Fact(Skip = "String doesn't contain a constructor string(string args). Does this need to be modified for .NET, or do we need to build this into the Host?")]
+    public void TestExternalInternalUnify()
     {
-    Assert.False(p.query("new String(\"foo\") = \"foo\"").results().isEmpty());
-  }
+        var polar = new Polar();
+        Assert.True(polar.NewQuery("new String(\"foo\") = \"foo\"", 0).Results.Any());
+    }
 
   [Fact]
   public void TestReturnListFromCall()

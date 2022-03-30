@@ -130,7 +130,7 @@ public class Query : IDisposable
                         if (data.GetProperty("kwargs").ValueKind != JsonValueKind.Null)
                         {
                             // TODO: _Could_ we support this with named arguments?
-                            throw new InvalidCallException("Keyword arguments are not supported.");
+                            throw new InvalidCallException("The .NET Oso library does not support keyword arguments");
                         }
                         HandleCall(attrName, jArgs, instance, callId);
                         break;
