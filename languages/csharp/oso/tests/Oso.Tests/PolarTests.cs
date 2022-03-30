@@ -357,37 +357,41 @@ public class PolarTests
         Assert.Empty(polar.NewQuery("f(\"notoso\")", 0).Results);
     }
 
-    /*
-  [Fact]
-  public void TestListMethods()
+      [Fact]
+      public void TestListMethods()
+        {
+            var polar = new Polar();
+            // TODO: is size() part of Polar, or just a reference to .NET List objects?
+            // polar.Load("f(x) if x.size() = 3;");
+            polar.Load("f(x) if x.Count = 3;");
+            Assert.True(polar.QueryRule("f", new List<int> { 1, 2, 3 }).Results.Any());
+            Assert.False(polar.QueryRule("f", new List<int> { 1, 2, 3, 4 }).Results.Any());
+
+            Assert.True(polar.QueryRule("f", new int[] { 1, 2, 3 }).Results.Any());
+            Assert.False(polar.QueryRule("f", new int[] { 1, 2, 3, 4 }).Results.Any());
+      }
+
+    [Fact]
+    public void TestExternalIsa()
     {
-    p.loadStr("f(x) if x.size() = 3;");
-    Assert.False(p.queryRule("f", new ArrayList(Arrays.asList(1, 2, 3))).results().isEmpty());
-    Assert.True(p.queryRule("f", new ArrayList(Arrays.asList(1, 2, 3, 4))).results().isEmpty());
+        var polar = new Polar();
+        polar.RegisterClass(typeof(MyClass), "MyClass");
+        polar.RegisterClass(typeof(MySubClass), "MySubClass");
+        polar.Load("f(a: MyClass, x) if x = a.Id;");
+        var expected = new List<Dictionary<string, object>>() { new() { { "x", 1 } } };
+        var results = polar.QueryRule("f", new MyClass("test", 1), new Variable("x")).Results;
+        Assert.Equal(expected, results, new ResultsComparer());
+        polar.ClearRules();
 
-    Assert.False(p.queryRule("f", new int[] {1, 2, 3}).results().isEmpty());
-    Assert.True(p.queryRule("f", new int[] {1, 2, 3, 4}).results().isEmpty());
-  }
+        polar.Load("f(a: MySubClass, x) if x = a.Id;");
+        results = polar.QueryRule("f", new MyClass("test", 1), new Variable("x")).Results;
+        Assert.False(results.Any(), "Failed to filter rules by specializers.");
+        polar.ClearRules();
 
-  [Fact]
-  public void TestExternalIsa()
-    {
-    p.loadStr("f(a: MyClass, x) if x = a.id;");
-    List<HashMap<String, Object>> result =
-        p.queryRule("f", new MyClass("test", 1), new Variable("x")).results();
-    Assert.True(result.equals(List.of(Map.of("x", 1))));
-    p.clearRules();
-
-    p.loadStr("f(a: MySubClass, x) if x = a.id;");
-    result = p.queryRule("f", new MyClass("test", 1), new Variable("x")).results();
-    Assert.True(result.isEmpty(), "Failed to filter rules by specializers.");
-    p.clearRules();
-
-    p.loadStr("f(a: OtherClass, x) if x = a.id;");
-    assertThrows(
-        Exceptions.UnregisteredClassError.class,
-        () -> p.queryRule("f", new MyClass("test", 1), new Variable("x")).results());
-  }
+        polar.Load("f(a: OtherClass, x) if x = a.Id;");
+        var exception = Assert.Throws<OsoException>(() => polar.QueryRule("f", new MyClass("test", 1), new Variable("x")).Results.First());
+        Assert.Equal("Unregistered class: OtherClass", exception.Message);
+    }
 
   [Fact]
   public void TestExternalIsSubSpecializer()
