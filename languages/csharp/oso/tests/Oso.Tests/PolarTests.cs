@@ -6,6 +6,8 @@ using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using Xunit;
+using Xunit.Sdk;
+
 namespace Oso.Tests;
 
 public record class MyClass
@@ -507,6 +509,20 @@ public class PolarTests
         Assert.Equal(expected, polar.NewQuery("f(x)", 0).Results, new ResultsComparer());
     }
 
+    [Fact]
+    public void TestLoadNonPolarFile()
+    {
+        var polar = new Polar();
+        try
+        {
+            var exception = Assert.Throws<OsoException>(() => polar.LoadFiles("wrong.txt"));
+            Assert.Equal("Polar file extension missing: wrong.txt", ((AggregateException)exception.InnerException).InnerExceptions[0].Message);
+        }
+        catch (Xunit.Sdk.ThrowsException)
+        {
+            throw new XunitException("Failed to catch incorrect Polar file extension.");
+        }
+    }
 
   #endregion
 }
