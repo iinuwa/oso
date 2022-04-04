@@ -32,13 +32,13 @@ public class OsoException : Exception
         var data = property.Value;
         string subkind;
         Dictionary<string, object>? details = null;
-        try
+        if (data.ValueKind == JsonValueKind.Object)
         {
             var subkindProp = data.EnumerateObject().First();
             subkind = subkindProp.Name;
             details = subkindProp.Value.Deserialize<Dictionary<string, object>>();
         }
-        catch (JsonException)
+        else
         {
             subkind = errorJson.GetProperty("kind").GetProperty(kind).GetString();
         }
