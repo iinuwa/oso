@@ -586,6 +586,25 @@ public class PolarTests
         Assert.Equal(expected, polar.NewQuery("f(x)", 0).Results, new ResultsComparer());
         Assert.Equal(expected, polar.NewQuery("g(x)", 0).Results, new ResultsComparer());
     }
+
+  [Fact]
+  public void TestLoadMultipleFilesSameNameDifferentPath()
+    {
+        var polar = new Polar();
+        var path1 = Path.Join(TestPath, "Resources", "test.polar");
+        var path2 = Path.Join(TestPath, "Resources", "other", "test.polar");
+        polar.LoadFiles(path1, path2);
+        List<Dictionary<string, object>> expected = new()
+        {
+            new() { { "x", 1 } },
+            new() { { "x", 2 } },
+            new() { { "x", 3 } },
+        };
+        Assert.Equal(expected, polar.NewQuery("f(x)", 0).Results, new ResultsComparer());
+        Assert.Equal(expected, polar.NewQuery("g(x)", 0).Results, new ResultsComparer());
+  }
+
+  }
   #endregion
 }
 internal class ResultsComparer : IEqualityComparer<IEnumerable<Dictionary<string, object>>>
