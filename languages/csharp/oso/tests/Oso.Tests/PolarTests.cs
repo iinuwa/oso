@@ -667,6 +667,49 @@ public class PolarTests
         Assert.Throws<NullReferenceException>(() => polar.QueryRule("g", new MyClass("test", 1)).Results.Any());
     }
     #endregion
+    #region Test Oso
+    public class NotIterable { }
+
+    public class BarIterator : IEnumerable<int>
+    {
+        private List<int> List;
+        public BarIterator(List<object> list)
+        {
+            this.List = list.Cast<int>().ToList();
+        }
+
+        // code for data structure
+        public int Sum() => this.List.Aggregate((x, y) => x + y);
+
+        IEnumerator IEnumerable.GetEnumerator() => List.GetEnumerator();
+        public IEnumerator<int> GetEnumerator() => List.GetEnumerator();
+    }
+
+  [Fact]
+  public void TestIterators()
+  {
+      var polar = new Polar();
+    // non iterables throw exception
+    polar.RegisterClass(typeof(NotIterable), "NotIterable");
+    Assert.Throws<OsoException>(() => polar.NewQuery("x in new NotIterable()", 0).Results.Any());
+
+    // custom iterators work
+    List<Dictionary<string, object>> expected1 = new()
+    {
+        new() { { "x", 1 } },
+        new() { { "x", 2 } },
+        new() { { "x", 3 } },
+    };
+    polar.RegisterClass(typeof(BarIterator), "BarIterator");
+    Assert.Equal(expected1, polar.NewQuery("x in new BarIterator([1, 2, 3])", 0).Results, new ResultsComparer());
+    List<Dictionary<string, object>> expected2 = new()
+    {
+        new () {{ "x", 6 } },
+    };
+
+    Assert.Equal(expected2, polar.NewQuery("x = new BarIterator([1, 2, 3]).Sum()", 0).Results, new ResultsComparer());
+  }
+    #endregion
 }
 internal class ResultsComparer : IEqualityComparer<IEnumerable<Dictionary<string, object>>>
 {

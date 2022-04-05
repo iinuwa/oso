@@ -9,6 +9,7 @@ public class Query : IDisposable
 
     private readonly QueryHandle _handle;
     private readonly Host _host;
+    private Dictionary<ulong, IEnumerable<object>> _calls = new ();
 
     internal Query(QueryHandle handle, Host host)
     {
@@ -262,10 +263,33 @@ public class Query : IDisposable
         }
     }
 
-    // TODO: better parameter names
-    private void HandleNextExternal(ulong callId, JsonElement something)
+    private void HandleNextExternal(ulong callId, JsonElement iterable)
     {
-        throw new NotImplementedException();
+        if (!_calls.ContainsKey(callId))
+        {
+            var result = _host.ParsePolarTerm(iterable);
+            _calls[callId] = result switch {
+                IEnumerable<object> oList => oList,
+                IEnumerable<int> intList => intList.Cast<object>(),
+                IEnumerable<double> doubleList => doubleList.Cast<object>(),
+                IEnumerable<float> floatList => floatList.Cast<object>(),
+                IEnumerable<bool> boolList => boolList.Cast<object>(),
+                _ => throw new OsoException($"Invalid iterator: value {result.ToString()} of type {result.GetType()} is not iterable"),
+            };
+        }
+        string cachedResult;
+        try
+        {
+            var call = _calls.ContainsKey(callId)
+                ? _calls[callId].First()
+                : throw new Exception($"Unregistered call ID: {callId}");
+            cachedResult = _host.SerializePolarTerm(call).ToString();
+        }
+        catch (KeyNotFoundException)
+        {
+            cachedResult = "null";
+        }
+        Native.CallResult(_handle, callId, cachedResult);
     }
 
     /**
