@@ -587,8 +587,8 @@ public class PolarTests
         Assert.Equal(expected, polar.NewQuery("g(x)", 0).Results, new ResultsComparer());
     }
 
-  [Fact]
-  public void TestLoadMultipleFilesSameNameDifferentPath()
+    [Fact]
+    public void TestLoadMultipleFilesSameNameDifferentPath()
     {
         var polar = new Polar();
         var path1 = Path.Join(TestPath, "Resources", "test.polar");
@@ -602,8 +602,29 @@ public class PolarTests
         };
         Assert.Equal(expected, polar.NewQuery("f(x)", 0).Results, new ResultsComparer());
         Assert.Equal(expected, polar.NewQuery("g(x)", 0).Results, new ResultsComparer());
-  }
+    }
 
+    [Fact]
+    public void TestClearRules()
+    {
+        var polar = new Polar();
+        polar.RegisterClass(typeof(MyClass));
+        polar.LoadFiles(Path.Join(TestPath, "Resources", "test.polar"));
+        List<Dictionary<string, object>> expected = new()
+        {
+            new() { { "x", 1 } },
+            new() { { "x", 2 } },
+            new() { { "x", 3 } },
+        };
+        Assert.Equal(expected, polar.NewQuery("f(x)", 0).Results, new ResultsComparer());
+        polar.ClearRules();
+        // TODO: This should throw
+        var exception = Assert.Throws<OsoException>(() => polar.NewQuery("f(x)", 0).Results.Any());
+        Assert.Equal("Query for undefined rule `f`", exception.Message);
+
+        // make sure classes are still registered
+        Assert.NotEmpty(polar.NewQuery("x = new MyClass(\"test\", 1)", 0).Results);
+    }
   }
   #endregion
 }

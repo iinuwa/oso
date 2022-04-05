@@ -40,6 +40,7 @@ internal static class Native
         unsafe
         {
             GetVoidResult(polar_clear_rules(polar));
+            ProcessMessages(polar);
         }
     }
 
