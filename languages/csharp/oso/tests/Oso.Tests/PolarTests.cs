@@ -625,13 +625,55 @@ public class PolarTests
         // make sure classes are still registered
         Assert.NotEmpty(polar.NewQuery("x = new MyClass(\"test\", 1)", 0).Results);
     }
-  }
-  #endregion
+
+    public class Foo {
+      public string foo;
+
+      public Foo() {
+        this.foo = "foo";
+      }
+    }
+
+    [Fact]
+    public void TestLookupErrors()
+    {
+        var polar = new Polar();
+        polar.RegisterClass(typeof(Foo), "Foo");
+        Assert.Equal(new List<Dictionary<string, object>>(), polar.NewQuery("new Foo() = {bar: \"bar\"}", 0).Results, new ResultsComparer());
+        var exception = Assert.Throws<OsoException>(() => polar.NewQuery("new Foo().bar = \"bar\"", 0).Results.Any());
+    }
+
+    [Fact]
+    public void TestUnboundVariable()
+    {
+        var polar = new Polar();
+        polar.LoadStr("rule(_x, y) if y = 1;");
+        var result = polar.NewQuery("rule(x, y)", 0).Results.First();
+        Assert.True(result["x"] is Variable);
+        Assert.Equal(result["y"], 1);
+    }
+
+    [Fact]
+    public void TestReturnNull()
+    {
+        var polar = new Polar();
+        polar.RegisterClass(typeof(MyClass), "MyClass");
+        polar.LoadStr("f(x) if x.MyReturnNull() = nil;");
+        Assert.NotEmpty(polar.QueryRule("f", new MyClass("test", 1)).Results);
+
+        polar.ClearRules();
+
+        polar.LoadStr("g(x) if x.MyReturnNull().BadCall() = 1;");
+        Assert.Throws<NullReferenceException>(() => polar.QueryRule("g", new MyClass("test", 1)).Results.Any());
+    }
+    #endregion
 }
 internal class ResultsComparer : IEqualityComparer<IEnumerable<Dictionary<string, object>>>
 {
     public bool Equals(IEnumerable<Dictionary<string, object>>? x, IEnumerable<Dictionary<string, object>>? y)
     {
+        if (x == null || y == null) return false;
+
         foreach (var (xResult, yResult) in x.Zip(y))
         {
             if (!xResult.SequenceEqual(yResult)) return false;
