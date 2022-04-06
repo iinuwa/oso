@@ -21,7 +21,7 @@ public record class MyClass
         Id = id;
     }
     public string MyMethod(string arg) => arg;
-    public List<string> MyList() => new () { "hello", "world" };
+    public List<string> MyList() => new() { "hello", "world" };
     public MySubClass MySubClass(string name, int id) => new MySubClass(name, id);
     public IEnumerable<string> MyEnumeration() => new List<string>() { "hello", "world" };
     public static string MyStaticMethod() => "hello world";
@@ -101,7 +101,7 @@ public class PolarTests
         {
             Assert.Equal(expected, polar.QueryRule("f", 1, new Variable("result")).Results);
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             throw new Exception("Predicate query with Variable failed.", e);
         }
@@ -194,7 +194,7 @@ public class PolarTests
     [Fact]
     public void TestPredicateFFIRoundTrip()
     {
-        var polar = new Polar(); 
+        var polar = new Polar();
         Predicate pred = new Predicate("name", new List<object>() { 1, "hello" });
         JsonElement t = polar.Host.SerializePolarTerm(pred);
         object o = polar.Host.ParsePolarTerm(t);
@@ -247,10 +247,10 @@ public class PolarTests
         var polar = new Polar();
         polar.LoadStr("null(nil);");
 
-        List<Dictionary<string, object>> expected = new () { new () { { "x", null! } } };
+        List<Dictionary<string, object>> expected = new() { new() { { "x", null! } } };
         Assert.Equal(polar.NewQuery("null(x)", 0).Results, expected);
-        Assert.Equal(new List<Dictionary<string, object>>() { new () }, polar.QueryRule("null", args: new object?[] { null }).Results);
-        Assert.False(polar.QueryRule("null", bindings: new ()).Results.Any());
+        Assert.Equal(new List<Dictionary<string, object>>() { new() }, polar.QueryRule("null", args: new object?[] { null }).Results);
+        Assert.False(polar.QueryRule("null", bindings: new()).Results.Any());
     }
     #endregion
     #region Test Externals
@@ -269,15 +269,15 @@ public class PolarTests
         // TODO: test inheritance
     }
 
-  [Fact]
-  public void TestDuplicateRegistration()
+    [Fact]
+    public void TestDuplicateRegistration()
     {
         var polar = new Polar();
         polar.RegisterClass(typeof(MyClass), "MyClass");
         var exception = Assert.Throws<OsoException>(() => polar.RegisterClass(typeof(MyClass), "MyClass"));
         Assert.Equal("Attempted to alias MyClass as Oso.Tests.MyClass, but Oso.Tests.MyClass already has that alias.", exception.Message);
         // TODO: Should exceptions end with periods?
-  }
+    }
 
     [Fact]
     public void TestMakeInstanceFromPolar()
@@ -362,19 +362,19 @@ public class PolarTests
         Assert.Empty(polar.NewQuery("f(\"notoso\")", 0).Results);
     }
 
-      [Fact]
-      public void TestListMethods()
-        {
-            var polar = new Polar();
-            // TODO: is size() part of Polar, or just a reference to .NET List objects?
-            // polar.Load("f(x) if x.size() = 3;");
-            polar.LoadStr("f(x) if x.Count = 3;");
-            Assert.True(polar.QueryRule("f", new List<int> { 1, 2, 3 }).Results.Any());
-            Assert.False(polar.QueryRule("f", new List<int> { 1, 2, 3, 4 }).Results.Any());
+    [Fact]
+    public void TestListMethods()
+    {
+        var polar = new Polar();
+        // TODO: is size() part of Polar, or just a reference to .NET List objects?
+        // polar.Load("f(x) if x.size() = 3;");
+        polar.LoadStr("f(x) if x.Count = 3;");
+        Assert.True(polar.QueryRule("f", new List<int> { 1, 2, 3 }).Results.Any());
+        Assert.False(polar.QueryRule("f", new List<int> { 1, 2, 3, 4 }).Results.Any());
 
-            Assert.True(polar.QueryRule("f", new int[] { 1, 2, 3 }).Results.Any());
-            Assert.False(polar.QueryRule("f", new int[] { 1, 2, 3, 4 }).Results.Any());
-      }
+        Assert.True(polar.QueryRule("f", new int[] { 1, 2, 3 }).Results.Any());
+        Assert.False(polar.QueryRule("f", new int[] { 1, 2, 3, 4 }).Results.Any());
+    }
 
     [Fact]
     public void TestExternalIsa()
@@ -543,10 +543,10 @@ public class PolarTests
             throw new XunitException("Failed to pass filename across FFI boundary.");
         }
         File.Delete(path);
-  }
+    }
 
-  [Fact]
-  public void TestLoadFileIdempotent()
+    [Fact]
+    public void TestLoadFileIdempotent()
     {
         var polar = new Polar();
         var path = Path.Join(TestPath, "Resources", "test.polar");
@@ -567,7 +567,7 @@ public class PolarTests
         {
             throw new Exception(ex.GetType().ToString() + "loadFile behavior is not idempotent.");
         }
-  }
+    }
 
     [Fact]
     public void TestLoadMultipleFiles()
@@ -576,7 +576,7 @@ public class PolarTests
 
         var path1 = Path.Join(TestPath, "Resources", "test.polar");
         var path2 = Path.Join(TestPath, "Resources", "test2.polar");
-        polar.LoadFiles(new [] { path1, path2 });
+        polar.LoadFiles(new[] { path1, path2 });
         List<Dictionary<string, object>> expected = new()
         {
             new() { { "x", 1 } },
@@ -625,12 +625,14 @@ public class PolarTests
         Assert.NotEmpty(polar.NewQuery("x = new MyClass(\"test\", 1)", 0).Results);
     }
 
-    public class Foo {
-      public string foo;
+    public class Foo
+    {
+        public string foo;
 
-      public Foo() {
-        this.foo = "foo";
-      }
+        public Foo()
+        {
+            this.foo = "foo";
+        }
     }
 
     [Fact]
