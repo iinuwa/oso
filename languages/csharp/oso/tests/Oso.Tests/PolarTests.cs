@@ -298,9 +298,9 @@ public class PolarTests
         // TODO: Is this supposed to be RegisterConstant?
         // polar.RegisterConstant(true, "MyClass");
         polar.RegisterClass(typeof(MyClass), "MyClass");
-        var e1 = Assert.Throws<OsoException>(() => polar.NewQuery("x = new MyClass(\"test\", id: 1)", 0).Results.First());
+        var e1 = Assert.Throws<OsoException>(() => polar.NewQuery("x = new MyClass(\"test\", id: 1)", 0));
         Assert.Equal("Failed to instantiate external class MyClass; named arguments are not supported in .NET", e1.Message);
-        var e2 = Assert.Throws<InvalidCallException>(() => polar.NewQuery("x = (new MyClass(\"test\", 1)).Foo(\"test\", id: 1)", 0).Results.First());
+        var e2 = Assert.Throws<InvalidCallException>(() => polar.NewQuery("x = (new MyClass(\"test\", 1)).Foo(\"test\", id: 1)", 0));
         Assert.Equal("The .NET Oso library does not support keyword arguments", e2.Message);
     }
 
@@ -394,7 +394,7 @@ public class PolarTests
         polar.ClearRules();
 
         polar.LoadStr("f(a: OtherClass, x) if x = a.Id;");
-        var exception = Assert.Throws<OsoException>(() => polar.QueryRule("f", new MyClass("test", 1), new Variable("x")).Results.First());
+        var exception = Assert.Throws<OsoException>(() => polar.QueryRule("f", new MyClass("test", 1), new Variable("x")));
         Assert.Equal("Unregistered class: OtherClass", exception.Message);
     }
 
@@ -618,8 +618,7 @@ public class PolarTests
         };
         Assert.Equal(expected, polar.NewQuery("f(x)", 0).Results, new ResultsComparer());
         polar.ClearRules();
-        // TODO: This should throw
-        var exception = Assert.Throws<OsoException>(() => polar.NewQuery("f(x)", 0).Results.Any());
+        var exception = Assert.Throws<OsoException>(() => polar.NewQuery("f(x)", 0));
         Assert.Equal("Query for undefined rule `f`", exception.Message);
 
         // make sure classes are still registered
@@ -640,7 +639,7 @@ public class PolarTests
         var polar = new Polar();
         polar.RegisterClass(typeof(Foo), "Foo");
         Assert.Equal(new List<Dictionary<string, object>>(), polar.NewQuery("new Foo() = {bar: \"bar\"}", 0).Results, new ResultsComparer());
-        var exception = Assert.Throws<OsoException>(() => polar.NewQuery("new Foo().bar = \"bar\"", 0).Results.Any());
+        var exception = Assert.Throws<OsoException>(() => polar.NewQuery("new Foo().bar = \"bar\"", 0));
     }
 
     [Fact]
@@ -664,7 +663,7 @@ public class PolarTests
         polar.ClearRules();
 
         polar.LoadStr("g(x) if x.MyReturnNull().BadCall() = 1;");
-        Assert.Throws<NullReferenceException>(() => polar.QueryRule("g", new MyClass("test", 1)).Results.Any());
+        Assert.Throws<NullReferenceException>(() => polar.QueryRule("g", new MyClass("test", 1)));
     }
     #endregion
     #region Test Oso
@@ -691,7 +690,8 @@ public class PolarTests
       var polar = new Polar();
     // non iterables throw exception
     polar.RegisterClass(typeof(NotIterable), "NotIterable");
-    Assert.Throws<OsoException>(() => polar.NewQuery("x in new NotIterable()", 0).Results.Any());
+    var exception = Assert.Throws<OsoException>(() => polar.NewQuery("x in new NotIterable()", 0));
+    Assert.Equal("Invalid iterator: value Oso.Tests.PolarTests+NotIterable of type Oso.Tests.PolarTests+NotIterable is not iterable", exception.Message);
 
     // custom iterators work
     List<Dictionary<string, object>> expected1 = new()

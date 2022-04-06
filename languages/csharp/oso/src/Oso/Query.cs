@@ -11,10 +11,13 @@ public class Query : IDisposable
     private readonly Host _host;
     private Dictionary<ulong, IEnumerable<object>> _calls = new ();
 
+    private Dictionary<string, object>? _currentResult;
+
     internal Query(QueryHandle handle, Host host)
     {
         _handle = handle;
         _host = host;
+        NextResult();
     }
 
     // struct polar_CResult_c_char *polar_next_query_event(struct polar_Query *query_ptr);
@@ -34,26 +37,26 @@ public class Query : IDisposable
     /// <remarks>Not thread-safe, and does not support concurrent enumerations. Fully enumerate once before calling again.</remarks>
     public IEnumerable<Dictionary<string, object>> Results
     {
-        get => _resultsEnumerated ? _results : EnumerateResults();
+        get {
+            return _currentResult == null ? _results : EnumerateResults();
+        }
     }
-
     private IEnumerable<Dictionary<string, object>> EnumerateResults()
     {
-        var result = NextResult();
-        if (result != null)
+        if (_currentResult != null)
         {
-            _results.Add(result);
-            yield return result;
+            _results.Add(_currentResult);
+            yield return _currentResult;
+            NextResult();
         }
         else 
         {
             _resultsEnumerated = true;
-            yield break;
         }
     }
 
     /// Generate the next Query result
-    private Dictionary<string, object>? NextResult()
+    private void NextResult()
     {
         while (true)
         {
@@ -80,9 +83,11 @@ public class Query : IDisposable
             switch (kind)
             {
                 case "Done":
-                    return null;
+                    _currentResult = null;
+                    return;
                 case "Result":
-                    return _host.DeserializePolarDictionary(data.GetProperty("bindings"));
+                    _currentResult = _host.DeserializePolarDictionary(data.GetProperty("bindings"));
+                    return;
                 case "MakeExternal":
                     ulong id = data.GetProperty("instance_id").GetUInt64();
                     if (_host.HasInstance(id))
