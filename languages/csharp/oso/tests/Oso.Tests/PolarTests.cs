@@ -730,6 +730,68 @@ public class PolarTests
         Expression expected = new Expression(Operator.And, new() { new Expression(Operator.Gt, new() { new Variable("_this"), 2 }) });
         Assert.Equal(expected, expr);
     }
+
+    [Fact]
+    public void TestPartialUnification()
+    {
+        var polar = new Polar();
+        // GIVEN
+        polar.LoadStr("f(x, y) if x = y;");
+        Variable x = new Variable("x");
+        Variable y = new Variable("y");
+
+        // WHEN
+        var query = polar.QueryRule("f", x, y);
+        var results = query.Results;
+
+        // THEN
+        Assert.Single(results);
+        Dictionary<string, object> bindings = query.Results.First();
+        Assert.Equal(y, bindings["x"]);
+        Assert.Equal(x, bindings["y"]);
+    }
+
+    [Fact]
+    public void TestPartial()
+    {
+        // GIVEN
+        var polar = new Polar();
+        polar.LoadStr("f(1); f(x) if x = 1 and x = 2;");
+
+        // WHEN
+        Predicate rule = new Predicate("f", new List<Variable>() { new Variable("x") });
+        var query = polar.NewQuery(rule, true);
+        Assert.Single(query.Results);
+        Assert.Equal(1, query.Results.First()["x"]);
+
+        polar.ClearRules();
+
+        polar.LoadStr("g(x) if x.bar = 1 and x.baz = 2;");
+
+        Predicate gRule = new Predicate("g", new List<Variable>{ new("x") });
+        var query2 = polar.NewQuery(gRule, true);
+        Assert.Single(query2.Results);
+        Expression expr = (Expression)query2.Results.First()["x"];
+        List<object> args = (List<Object>)unwrapAnd(expr);
+        Assert.Equal(2, args.Count);
+        Assert.Equal(
+            args[0],
+            new Expression(
+                Operator.Unify, new List<object> { 1, new Expression(Operator.Dot, new List<object> { new Variable("_this"), "bar" }) }));
+        Assert.Equal(
+            args[1],
+            new Expression(
+                Operator.Unify, new List<object> { 2, new Expression(Operator.Dot, new List<object> { new Variable("_this"), "baz" }) }));
+    }
+
+    private object unwrapAnd(Expression expression)
+    {
+        Assert.Equal(expression.Operator, Operator.And);
+        return (expression.Args.Count() == 1)
+            ? expression.Args.Single()
+            : expression.Args;
+    }
+
     #endregion
 }
 internal class ResultsComparer : IEqualityComparer<IEnumerable<Dictionary<string, object>>>

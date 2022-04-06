@@ -1,6 +1,6 @@
 namespace Oso;
 
-internal record class Predicate(string Name, IEnumerable<object?> Arguments)
+public record class Predicate(string Name, IEnumerable<object?> Arguments)
 {
     bool IEquatable<Predicate>.Equals(Predicate? other)
     {
