@@ -174,12 +174,9 @@ public class Host
                         + "acceptExpression as true to Oso.query.";
                     throw new OsoException(unexpectedExpressionMessage);
                 }
-                throw new NotImplementedException();
-            /*
-            return new Expression(
-                Enum.Parse<Operator>(property.Value.GetProperty("operator").GetString()),
-                DeserializePolarList(property.Value.GetProperty("args")));
-                */
+                return new Expression(
+                    Enum.Parse<Operator>(property.Value.GetProperty("operator").GetString()),
+                    DeserializePolarList(property.Value.GetProperty("args")));
             case "Pattern":
                 throw new NotImplementedException();
             /*
@@ -265,19 +262,15 @@ public class Host
         {
             writer.WriteString("Variable", variable.Name);
         }
-        /*
         else if (value is Expression expression)
         {
-            jVal.put("Expression", expressionJSON);
             writer.WriteStartObject("Expression");
             writer.WriteString("operator", expression.Operator.ToString());
-            writer.WriteStartArray("args");
-
-            expressionJSON.put("args", javaListToPolar(expression.getArgs()));
-            writer.WriteEndArray();
-
+            writer.WritePropertyName("args");
+            SerializePolarList(writer, expression.Args);
             writer.WriteEndObject();
         }
+        /*
         else if (value is Pattern pattern)
         {
             if (pattern.getTag() == null)

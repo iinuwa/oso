@@ -151,6 +151,13 @@ public class Polar : IDisposable
         return Native.NewQuery(_handle, Host, query, trace);
     }
 
+    public Query NewQuery(string query, bool acceptExpression, uint trace)
+    {
+        var host = Host.Clone();
+        host.AcceptExpression = acceptExpression;
+        return Native.NewQuery(_handle, host, query, trace);
+    }
+
     public Query QueryRule(string rule, params object?[] args) => QueryRule(rule, null, args);
     public Query QueryRule(string rule, Dictionary<string, object>? bindings = null, params object?[] args)
     {

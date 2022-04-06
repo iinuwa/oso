@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -686,31 +687,49 @@ public class PolarTests
         public IEnumerator<int> GetEnumerator() => List.GetEnumerator();
     }
 
-  [Fact]
-  public void TestIterators()
-  {
-      var polar = new Polar();
-    // non iterables throw exception
-    polar.RegisterClass(typeof(NotIterable), "NotIterable");
-    var exception = Assert.Throws<OsoException>(() => polar.NewQuery("x in new NotIterable()", 0));
-    Assert.Equal("Invalid iterator: value Oso.Tests.PolarTests+NotIterable of type Oso.Tests.PolarTests+NotIterable is not iterable", exception.Message);
-
-    // custom iterators work
-    List<Dictionary<string, object>> expected1 = new()
+    [Fact]
+    public void TestIterators()
     {
-        new() { { "x", 1 } },
-        new() { { "x", 2 } },
-        new() { { "x", 3 } },
-    };
-    polar.RegisterClass(typeof(BarIterator), "BarIterator");
-    Assert.Equal(expected1, polar.NewQuery("x in new BarIterator([1, 2, 3])", 0).Results, new ResultsComparer());
-    List<Dictionary<string, object>> expected2 = new()
-    {
-        new () {{ "x", 6 } },
-    };
+        var polar = new Polar();
+        // non iterables throw exception
+        polar.RegisterClass(typeof(NotIterable), "NotIterable");
+        var exception = Assert.Throws<OsoException>(() => polar.NewQuery("x in new NotIterable()", 0));
+        Assert.Equal("Invalid iterator: value Oso.Tests.PolarTests+NotIterable of type Oso.Tests.PolarTests+NotIterable is not iterable", exception.Message);
 
-    Assert.Equal(expected2, polar.NewQuery("x = new BarIterator([1, 2, 3]).Sum()", 0).Results, new ResultsComparer());
-  }
+        // custom iterators work
+        List<Dictionary<string, object>> expected1 = new()
+        {
+            new() { { "x", 1 } },
+            new() { { "x", 2 } },
+            new() { { "x", 3 } },
+        };
+        polar.RegisterClass(typeof(BarIterator), "BarIterator");
+        Assert.Equal(expected1, polar.NewQuery("x in new BarIterator([1, 2, 3])", 0).Results, new ResultsComparer());
+        List<Dictionary<string, object>> expected2 = new()
+        {
+            new() { { "x", 6 } },
+        };
+
+        Assert.Equal(expected2, polar.NewQuery("x = new BarIterator([1, 2, 3]).Sum()", 0).Results, new ResultsComparer());
+    }
+
+    [Fact]
+    public void TestExpressionGt()
+    {
+        var polar = new Polar();
+        // GIVEN
+        polar.LoadStr("f(x) if x > 2;");
+        // WHEN
+        var query = polar.NewQuery("f(x)", true, 0);
+        IEnumerable<Dictionary<string, object>> results = query.Results.ToList();
+        // THEN
+        Assert.Single(results);
+        Dictionary<string, object> result = results.First();
+        Assert.Single(result);
+        object expr = result["x"];
+        Expression expected = new Expression(Operator.And, new() { new Expression(Operator.Gt, new() { new Variable("_this"), 2 }) });
+        Assert.Equal(expected, expr);
+    }
     #endregion
 }
 internal class ResultsComparer : IEqualityComparer<IEnumerable<Dictionary<string, object>>>
