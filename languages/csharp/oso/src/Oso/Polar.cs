@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using System.Text.Json;
 using Oso.Ffi;
 
@@ -159,6 +159,14 @@ public class Polar : IDisposable
     }
 
     public Query NewQuery(Predicate predicate, bool acceptExpression)
+    {
+        var host = Host.Clone();
+        host.AcceptExpression = acceptExpression;
+        var query = host.SerializePolarTerm(predicate).ToString();
+        return Native.NewQueryFromTerm(_handle, host, query, 0);
+    }
+
+    public Query NewQuery(Predicate predicate, Dictionary<string, object> bindings, bool acceptExpression)
     {
         var host = Host.Clone();
         host.AcceptExpression = acceptExpression;
