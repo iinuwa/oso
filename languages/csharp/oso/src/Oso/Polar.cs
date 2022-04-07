@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Text.Json;
 using Oso.Ffi;
 
@@ -80,7 +80,7 @@ public class Polar : IDisposable
     private void Load(IEnumerable<Source> sources)
     {
         string sourcesJson = JsonSerializer.Serialize(sources);
-        // TODO: Host.RegisterMros();
+        Host.RegisterMros();
         Native.Load(_handle, sourcesJson);
         // TODO: Move this to Native
         var nextQuery = Native.NextInlineQuery(_handle, Host);
@@ -118,16 +118,6 @@ public class Polar : IDisposable
     {
         Host.CacheClass(t, name);
         RegisterConstant(t, name);
-    }
-
-    /**
-     *  struct polar_CResult_c_void *polar_register_mro(struct polar_Polar *polar_ptr,
-     *                                                  const char *name,
-     *                                                  const char *mro);
-     */
-    public void RegisterMro(string name, string mro)
-    {
-        Native.RegisterMro(_handle, name, mro);
     }
 
 

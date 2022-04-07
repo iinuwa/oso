@@ -838,6 +838,74 @@ public class PolarTests
             throw new XunitException("Expected inline query to fail but it didn't.");
         }
     }
+
+    public class Bar : Foo { }
+
+    public class Baz : Bar { }
+
+    public class Bad { }
+
+    [Fact]
+    public void TestRuleTypes()
+    {
+        var polar = new Polar();
+        // NOTE: keep this order of registering classes--confirms that MROs are added at the correct
+        // time
+        polar.RegisterClass(typeof(Baz), "Baz");
+        polar.RegisterClass(typeof(Bar), "Bar");
+        polar.RegisterClass(typeof(Foo), "Foo");
+        polar.RegisterClass(typeof(Bad), "Bad");
+
+        const string policy1 =
+            "type f(_x: Integer);"
+                + "f(1);"
+                + "type f(_x: Foo);"
+                + "type f(_x: Foo, _y: Bar);"
+                + "f(_x: Bar);"
+                + "f(_x: Baz);";
+
+        polar.LoadStr(policy1);
+
+        polar.ClearRules();
+
+        try
+        {
+            var exception = Assert.Throws<OsoException>(() => polar.LoadStr(policy1 + "f(_x: Bad);"));
+            Assert.StartsWith("Invalid rule: f(_x: Bad{}); Must match on", exception.Message);
+        }
+        catch (ThrowsException)
+        {
+            throw new XunitException("Expected rule type validation error.");
+        }
+
+        //  Test with fields
+        const string policy2 = "type f(_x: Foo{id: 1});" + "f(_x: Bar{id: 1});" + "f(_x: Baz{id: 1});";
+
+        polar.LoadStr(policy2);
+
+        polar.ClearRules();
+
+        try
+        {
+            var exception = Assert.Throws<OsoException>(() => polar.LoadStr(policy2 + "f(_x: Baz);"));
+            Assert.StartsWith("Invalid rule: f(_x: Baz{}); Must match on", exception.Message);
+        }
+        catch (ThrowsException)
+        {
+            throw new XunitException("Expected rule type validation error.");
+        }
+
+        try
+        {
+            // Test invalid rule type
+            var exception = Assert.Throws<OsoException>(() => polar.LoadStr("type f(x: Foo, x.baz);"));
+            Assert.StartsWith("Invalid rule type: f(x: Foo{}, _value_1)", exception.Message);
+        }
+        catch (ThrowsException)
+        {
+            throw new XunitException("Expected rule type validation error.");
+        }
+    }
     #endregion
 }
 internal class ResultsComparer : IEqualityComparer<IEnumerable<Dictionary<string, object>>>

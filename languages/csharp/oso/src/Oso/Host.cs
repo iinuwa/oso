@@ -482,6 +482,24 @@ public class Host
     /// </summary>
     public bool HasInstance(ulong instanceId) => _instances.ContainsKey(instanceId);
 
+    internal void RegisterMros()
+    {
+        foreach (var (key, value) in _classes)
+        {
+            var superType = value.BaseType;
+            var mro = new List<ulong>();
+            while (superType != null)
+            {
+                if (_classIds.TryGetValue(superType, out ulong id))
+                {
+                    mro.Add(id);
+                }
+                superType = superType.BaseType;
+            }
+            Native.RegisterMro(_handle, key, JsonSerializer.Serialize(mro));
+        }
+    }
+
     private object? GetInstance(ulong instanceId)
     {
         return _instances.TryGetValue(instanceId, out object? value)
