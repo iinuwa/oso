@@ -768,7 +768,7 @@ public class PolarTests
 
         polar.LoadStr("g(x) if x.bar = 1 and x.baz = 2;");
 
-        Predicate gRule = new Predicate("g", new List<Variable>{ new("x") });
+        Predicate gRule = new Predicate("g", new List<Variable> { new("x") });
         var query2 = polar.NewQuery(gRule, true);
         Assert.Single(query2.Results);
         Expression expr = (Expression)query2.Results.First()["x"];
@@ -792,9 +792,9 @@ public class PolarTests
             : expression.Args;
     }
 
-    public static class User { }
+    public class User { }
 
-    public static class Post { }
+    public class Post { }
 
     [Fact]
     public void TestPartialConstraint()

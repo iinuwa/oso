@@ -43,9 +43,11 @@ public class OsoException : Exception
             subkind = errorJson.GetProperty("kind").GetProperty(kind).GetString();
         }
 
-        switch (kind) {
+        switch (kind)
+        {
             case "Parse":
-                switch (subkind) {
+                switch (subkind)
+                {
                     case "ExtraToken":
                         // return new ExtraToken(msg, details);
                         return new OsoException($"Extra token: {msg}", details);
@@ -68,14 +70,14 @@ public class OsoException : Exception
                         // return new ParseError(msg, details);
                         return new OsoException($"Parse error: {msg}", details);
                 }
-                /*
-            case "Runtime":
-                return;
-            case "Operational":
-                return;
-            case "Validation":
-                return;
-                */
+            /*
+        case "Runtime":
+            return;
+        case "Operational":
+            return;
+        case "Validation":
+            return;
+            */
             default:
                 return new OsoException(msg, details);
         }

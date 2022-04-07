@@ -57,7 +57,8 @@ public class Host
         if (!_classes.TryGetValue(className, out Type t)) throw new OsoException($"Unregistered class exception: {className}");
         var argTypes = constructorArgs.Select(o => o.GetType()).ToArray();
 
-        var constructor = t.GetConstructors().FirstOrDefault(c => {
+        var constructor = t.GetConstructors().FirstOrDefault(c =>
+        {
             var paramTypes = c.GetParameters().Select(p => p.ParameterType).ToArray();
             if (argTypes.Count() == paramTypes.Count())
             {
@@ -237,9 +238,12 @@ public class Host
                 writer.WriteNumberValue(doubleValue);
             }
             writer.WriteEndObject();
-        } else if (value is string stringValue) {
+        }
+        else if (value is string stringValue)
+        {
             writer.WriteString("String", stringValue);
-        } else if (value != null && (value.GetType().IsArray || (value.GetType().IsGenericType && value.GetType().GetGenericTypeDefinition() == typeof(List<>))))
+        }
+        else if (value != null && (value.GetType().IsArray || (value.GetType().IsGenericType && value.GetType().GetGenericTypeDefinition() == typeof(List<>))))
         {
             writer.WritePropertyName("List");
             SerializePolarList(writer, value);
@@ -297,7 +301,8 @@ public class Host
             ulong? instanceId = null;
 
             // if the object is a Class, then it will already have an instance ID
-            if (value is Type t) {
+            if (value is Type t)
+            {
                 instanceId = _classIds[t];
             }
 
@@ -354,42 +359,42 @@ public class Host
         writer.WriteStartArray();
         if (listLikeObject is IEnumerable<int> intList)
         {
-            foreach(var element in intList)
+            foreach (var element in intList)
             {
                 writer.WriteRawValue(SerializePolarTerm(element).ToString());
             }
         }
         else if (listLikeObject is IEnumerable<double> doubleList)
         {
-            foreach(var element in doubleList)
+            foreach (var element in doubleList)
             {
                 writer.WriteRawValue(SerializePolarTerm(element).ToString());
             }
         }
         else if (listLikeObject is IEnumerable<float> floatList)
         {
-            foreach(var element in floatList)
+            foreach (var element in floatList)
             {
                 writer.WriteRawValue(SerializePolarTerm(element).ToString());
             }
         }
         else if (listLikeObject is IEnumerable<bool> boolList)
         {
-            foreach(var element in boolList)
+            foreach (var element in boolList)
             {
                 writer.WriteRawValue(SerializePolarTerm(element).ToString());
             }
         }
         else if (listLikeObject is IEnumerable<string> stringList)
         {
-            foreach(var element in stringList)
+            foreach (var element in stringList)
             {
                 writer.WriteRawValue(SerializePolarTerm(element).ToString());
             }
         }
         else if (listLikeObject is IEnumerable<object> objList)
         {
-            foreach(var element in objList)
+            foreach (var element in objList)
             {
                 writer.WriteRawValue(SerializePolarTerm(element).ToString());
             }
@@ -470,7 +475,8 @@ public class Host
     public bool Operator(string op, List<object> args)
     {
         Object left = args[0], right = args[1];
-        if ("Eq".Equals(op, StringComparison.InvariantCulture)) {
+        if ("Eq".Equals(op, StringComparison.InvariantCulture))
+        {
             if (left == null) return left == right;
             else return left.Equals(right);
         }

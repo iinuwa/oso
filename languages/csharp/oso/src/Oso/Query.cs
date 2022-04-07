@@ -9,7 +9,7 @@ public class Query : IDisposable
 
     private readonly QueryHandle _handle;
     private readonly Host _host;
-    private Dictionary<ulong, IEnumerable<object>> _calls = new ();
+    private Dictionary<ulong, IEnumerable<object>> _calls = new();
 
     private Dictionary<string, object>? _currentResult;
 
@@ -32,12 +32,13 @@ public class Query : IDisposable
     }
     */
     private bool _resultsEnumerated;
-    private List<Dictionary<string, object>> _results = new ();
+    private List<Dictionary<string, object>> _results = new();
 
     /// <remarks>Not thread-safe, and does not support concurrent enumerations. Fully enumerate once before calling again.</remarks>
     public IEnumerable<Dictionary<string, object>> Results
     {
-        get {
+        get
+        {
             return _currentResult == null ? _results : EnumerateResults();
         }
     }
@@ -49,7 +50,7 @@ public class Query : IDisposable
             yield return _currentResult;
             NextResult();
         }
-        else 
+        else
         {
             _resultsEnumerated = true;
         }
@@ -130,7 +131,8 @@ public class Query : IDisposable
                         {
                             jArgs = args;
                         }
-                        else {
+                        else
+                        {
                             jArgs = null;
                         }
                         if (data.GetProperty("kwargs").ValueKind != JsonValueKind.Null)
@@ -273,7 +275,8 @@ public class Query : IDisposable
         if (!_calls.ContainsKey(callId))
         {
             var result = _host.ParsePolarTerm(iterable);
-            _calls[callId] = result switch {
+            _calls[callId] = result switch
+            {
                 IEnumerable<object> oList => oList,
                 IEnumerable<int> intList => intList.Cast<object>(),
                 IEnumerable<double> doubleList => doubleList.Cast<object>(),
