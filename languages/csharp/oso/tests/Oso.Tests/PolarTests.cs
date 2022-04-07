@@ -821,6 +821,23 @@ public class PolarTests
                 Operator.Unify, new List<object> { 1, new Expression(Operator.Dot, new() { new Variable("_this"), "user" }) }),
             andArgs[1]);
     }
+
+    [Fact]
+    public void TestUnexpectedExpression()
+    {
+        var polar = new Polar();
+        polar.LoadStr("f(x) if x > 2;");
+
+        try
+        {
+            var exception = Assert.Throws<OsoException>(() => polar.NewQuery("f(x)", 0));
+            Assert.StartsWith("Received Expression from Polar VM.", exception.Message);
+        }
+        catch (ThrowsException)
+        {
+            throw new XunitException("Expected inline query to fail but it didn't.");
+        }
+    }
     #endregion
 }
 internal class ResultsComparer : IEqualityComparer<IEnumerable<Dictionary<string, object>>>
