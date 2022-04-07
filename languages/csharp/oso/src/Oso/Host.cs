@@ -178,19 +178,17 @@ public class Host
                     Enum.Parse<Operator>(property.Value.GetProperty("operator").GetString()),
                     DeserializePolarList(property.Value.GetProperty("args")));
             case "Pattern":
-                throw new NotImplementedException();
-            /*
-            JsonProperty pattern = value.GetProperty("Pattern");
-            string patternTag = pattern.Name;
-            return patternTag switch
-            {
-                "Instance" => new Pattern(
-                                            pattern.Value.GetProperty("tag").GetString,
-                                            DeserializePolarDictionary(pattern.Value.GetProperty("fields").GetProperty("fields"))),
-                "Dictionary" => new Pattern(null, DeserializePolarDictionary(pattern.Value)),
-                _ => throw new Exceptions.UnexpectedPolarTypeError("Pattern: " + patternTag),
-            };
-            */
+                JsonProperty pattern = property.Value.EnumerateObject().First();
+                string patternTag = pattern.Name;
+                return patternTag switch
+                {
+                    "Instance" => new Pattern(
+                                                pattern.Value.GetProperty("tag").GetString(),
+                                                DeserializePolarDictionary(pattern.Value.GetProperty("fields").GetProperty("fields"))),
+                    "Dictionary" => new Pattern(null, DeserializePolarDictionary(pattern.Value)),
+                    // _ => throw new Exceptions.UnexpectedPolarTypeError("Pattern: " + patternTag),
+                    _ => throw new OsoException($"Unexpected Polar type error: Pattern: {patternTag}"),
+                };
             default:
                 // throw new Exceptions.UnexpectedPolarTypeError(tag);
                 // TODO: Rename PolarException to OsoException.

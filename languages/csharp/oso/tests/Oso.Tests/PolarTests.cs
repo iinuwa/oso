@@ -792,6 +792,35 @@ public class PolarTests
             : expression.Args;
     }
 
+    public static class User { }
+
+    public static class Post { }
+
+    [Fact]
+    public void TestPartialConstraint()
+    {
+        var polar = new Polar();
+        polar.RegisterClass(typeof(User), "User");
+        polar.RegisterClass(typeof(Post), "Post");
+        polar.LoadStr("f(x: User) if x.user = 1; f(x: Post) if x.post = 1;");
+
+        Variable x = new Variable("x");
+        Predicate rule = new Predicate("f", new List<object>() { x });
+        var results =
+            polar.NewQuery(rule, new Dictionary<string, object>() { { "x", new TypeConstraint(x, "User") } }, true).Results.ToList();
+
+        Assert.Single(results);
+
+        List<object> andArgs = (List<object>)unwrapAnd((Expression)results[0]["x"]);
+        Assert.Equal(2, andArgs.Count());
+        Assert.Equal(
+            new Expression(Operator.Isa, new() { new Variable("_this"), new Pattern("User", new()) }),
+            andArgs[0]);
+        Assert.Equal(
+            new Expression(
+                Operator.Unify, new List<object> { 1, new Expression(Operator.Dot, new() { new Variable("_this"), "user" }) }),
+            andArgs[1]);
+    }
     #endregion
 }
 internal class ResultsComparer : IEqualityComparer<IEnumerable<Dictionary<string, object>>>
