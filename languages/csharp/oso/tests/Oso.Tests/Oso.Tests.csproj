@@ -21,18 +21,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="../../src/Oso/Native/linux/libpolar.so" Condition="$([MSBuild]::IsOSPlatform('Linux'))">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="../../src/Oso/Native/macos/libpolar.dylib" Condition="$([MSBuild]::IsOSPlatform('OSX'))">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="../../src/Oso/Native/linux/libpolar.dll" Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\src\Oso\Oso.csproj" />
   </ItemGroup>
 

@@ -55,10 +55,10 @@ java-test:
 go-test: rust-build
 	$(MAKE) -C languages/go test
 
-csharp-build:
+dotnet-build:
 	$(MAKE) -C languages/csharp build
 
-csharp-test:
+dotnet-test:
 	$(MAKE) -C languages/csharp test
 
 docs-test: python-build
@@ -140,6 +140,9 @@ clean-go:
 
 clean-java:
 	$(MAKE) -C languages/java clean
+
+clean-dotnet:
+	$(MAKE) -C languages/csharp clean
 
 clean-js:
 	$(MAKE) -C languages/js clean

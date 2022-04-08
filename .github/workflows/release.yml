@@ -252,6 +252,43 @@ jobs:
           name: jar
           path: languages/java/oso/target/oso-${{ steps.version.outputs.oso_version }}.jar
 
+  build_nuget:
+    name: Build NuGet.
+    runs-on: ubuntu-latest
+    needs: [linux_libs, macos_libs, windows_libs]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set version env
+        id: version
+        run: echo "::set-output name=oso_version::$(cat VERSION)"
+      - uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: "6.0.x"
+      - name: Download dylibs
+        uses: actions/download-artifact@v1
+        with:
+          name: oso_library
+      - name: Copy libraries into resources.
+        run: |
+          mkdir -p languages/csharp/oso/lib/linux-x64
+          cp -r oso_library/libpolar.so languages/chsarp/oso/lib/linux-x64/
+          mkdir -p languages/csharp/oso/lib/osx-x64
+          cp -r oso_library/libpolar.so languages/chsarp/oso/lib/osx-x64/
+          mkdir -p languages/csharp/oso/lib/win-x64
+          cp -r oso_library/libpolar.so languages/chsarp/oso/lib/win-x64/
+      - name: Test
+        run: |
+          dotnet test
+        working-directory: languages/csharp/oso
+      - name: Build
+        run: |
+          dotnet pack /p:CIRelease=True --configuration Release --output artifacts
+        working-directory: languages/csharp/oso
+      - uses: actions/upload-artifact@v2
+        with:
+          name: nuget
+          path: languages/csharp/oso/artifacts/Oso.${{ steps.version.outputs.oso_version }}.nupkg
+
   build_gem:
     name: Build Gem.
     runs-on: ubuntu-latest
@@ -804,6 +841,45 @@ jobs:
           java -cp "..\jar\oso-${{ steps.version.outputs.oso_version }}.jar;." Test
         working-directory: test
 
+  validate_dotnet:
+    name: Test .NET ${{ matrix.dotnet-version }} on ${{ matrix.os }}
+    needs: [build_nuget]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-11, windows-latest]
+        dotnet-version: ["3.1.x", "5.0.x", "6.0.x"] # @TODO: 4.8, 4.7.2, 4.7.1, 4.7, 4.6.2?
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set version env
+        id: version
+        run: echo "::set-output name=oso_version::$(cat VERSION)"
+      - uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+      - name: Download oso jar from package run
+        uses: actions/download-artifact@v1
+        with:
+          name: nuget
+      - name: Run tests
+        if: runner.os != 'Windows'
+        run: |
+          echo "TODO: single-file compilation isn't supported in .NET Core/.NET 6+"
+          exit 1
+          dotnet build "../nuget/Oso.${{ steps.version.outputs.oso_version }}.nupkg:." Test.java 
+          dotnet build "../nuget/Oso.${{ steps.version.outputs.oso_version }}.nupkg:." Test
+        working-directory: test
+      - name: Run tests
+        if: runner.os == 'Windows'
+        env:
+          github_ref: ${{ github.ref }}
+        run: |
+          echo "TODO: single-file compilation isn't supported in .NET Core/.NET 6+"
+          exit 1
+          dotnet build "../nuget/Oso.${{ steps.version.outputs.oso_version }}.nupkg:." Test.java 
+          dotnet build "../nuget/Oso.${{ steps.version.outputs.oso_version }}.nupkg:." Test
+        working-directory: test
+
   validate_js:
     name: Test node ${{ matrix.node-version }} on ${{ matrix.os }}
     needs: [build_js]
@@ -892,6 +968,7 @@ jobs:
         build_macos_wheels,
         build_windows_wheels,
         build_jar,
+        build_nuget,
         build_gem,
         build_go,
         validate_python_linux,
@@ -901,6 +978,7 @@ jobs:
         validate_python_musl,
         validate_ruby,
         validate_java,
+        validate_dotnet,
         validate_js,
         validate_go,
         test_quickstarts,
@@ -935,6 +1013,12 @@ jobs:
           name: jar
       - name: Zip Java JAR
         run: zip --junk-paths -r oso-java.zip jar/
+      - name: Download oso NuGet package from package run
+        uses: actions/download-artifact@v1
+        with:
+          name: nuget
+      - name: Zip .NET NuGet package
+        run: zip --junk-paths -r oso-dotnet.zip nuget/
       - name: Download oso javascript package from package run
         uses: actions/download-artifact@v1
         with:
@@ -996,6 +1080,15 @@ jobs:
           asset_path: ./oso-java.zip
           asset_name: oso-java-${{ steps.version.outputs.oso_version }}.zip
           asset_content_type: application/zip
+      - name: Upload NuGet package
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./oso-dotnet.zip
+          asset_name: oso-dotnet-${{ steps.version.outputs.oso_version }}.zip
+          asset_content_type: application/zip
       - name: Upload Js Package
         uses: actions/upload-release-asset@v1
         env:
@@ -1029,6 +1122,7 @@ jobs:
         validate_python_musl,
         validate_ruby,
         validate_java,
+        validate_dotnet,
         validate_js,
         validate_go,
         validate_go_macos_arm,

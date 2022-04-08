@@ -249,6 +249,35 @@ jobs:
         env:
           MVN_FLAGS: "-q"
 
+  dotnet_test:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+            ${{ runner.os }}-cargo-test-
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+      - name: Install .NET
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: "6.0.x"
+      - name: Test .NET
+        run: make dotnet-test
+
   js_test:
     runs-on: ubuntu-latest
     needs: [build]

@@ -29,6 +29,10 @@ runs:
         grep "^version = \"$oso_version\"$" oso-derive/Cargo.toml
       shell: bash
       working-directory: languages/rust
+    - name: Check csharp version matches
+      run: grep "<Version>$oso_version</Version>" Oso.csproj
+      shell: bash
+      working-directory: languages/csharp/oso
     - name: Check polar version matches
       run: |
         grep "^version = \"$oso_version\"$" polar-core/Cargo.toml

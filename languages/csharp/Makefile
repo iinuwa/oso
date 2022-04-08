@@ -4,12 +4,16 @@ rust:
 	$(MAKE) -C ../.. rust-build
 	# @NOTE: this is just the debug lib. Dont use this for release builds.
 	if [ -e "../../target/debug/libpolar.dylib" ]; then \
-		mkdir -p oso/src/Oso/Native/macos; \
-		cp ../../target/debug/libpolar.dylib oso/src/Oso/Native/macos/; \
+		mkdir -p oso/lib/osx-64; \
+		cp ../../target/debug/libpolar.dylib oso/lib/osx-x64/; \
 	fi
 	if [ -e "../../target/debug/libpolar.so" ]; then \
-		mkdir -p oso/src/Oso/Native/linux; \
-		cp ../../target/debug/libpolar.so oso/src/Oso/Native/linux/; \
+		mkdir -p oso/lib/linux-x64; \
+		cp ../../target/debug/libpolar.so oso/lib/linux-x64/; \
+	fi
+	if [ -e "../../target/debug/libpolar.dll" ]; then \
+		mkdir -p oso/lib/win-x64; \
+		cp ../../target/debug/libpolar.dll oso/lib/win-x64/; \
 	fi
 
 build: rust
@@ -19,7 +23,7 @@ test: rust
 	cd oso && dotnet test 
 
 package: rust
-	cd oso/src/Oso && dotnet publish
+	cd oso/src/Oso && dotnet pack
 
 # repl: rust
 #	cd Oso && mvn $(MVN_FLAGS) exec:java -Dexec.mainClass="com.osohq.oso.Oso" -Dexec.args="$(ARGS)"
