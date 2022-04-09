@@ -61,6 +61,28 @@ jobs:
       - run: |
           GPG_TTY=$(tty) mvn -q clean source:jar deploy -DuniqueVersion=false -Dmaven.source.useDefaultManifestFile=true -DdeplyAtEnd=true -Dmaven.source.includePom=true -Dmaven.install.skip=true --settings settings.xml
         working-directory: languages/java/oso
+
+  dotnet:
+    name: Publish NuGet package to nuget.org
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      NUGET_ORG_API_KEY: ${{ secrets.NUGET_ORG_API_KEY }}
+      JiraUser: ${{ secrets.JIRAUSER }}
+      JiraPassword: ${{ secrets.JIRAPASSWORD }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: "v${{ github.event.inputs.version }}"
+      - run: |
+          curl -L -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -H "Accept: application/octet-stream" $(curl -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -s https://api.github.com/repos/osohq/oso/releases/tags/v${{ github.event.inputs.version }} | jq -r '.assets[] | select(.name == "oso-dotnet-${{ github.event.inputs.version }}.zip") | .url') --output oso-dotnet-${{ github.event.inputs.version }}.zip
+      - run: unzip oso-dotnet-${{ github.event.inputs.version }}.zip -d oso-dotnet-${{ github.event.inputs.version }}
+      - uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: "6.0.x"
+      - run: |
+         dotnet nuget push ./oso-dotnet-${{ github.event.inputs.version }}/Oso.${{ github.event.inputs.version }}.nupkg -k ${{ secrets.NUGET_ORG_API_KEY }} -s https://api.nuget.org/v3/index.json 
+
   python:
     name: Publish python package to pypi
     runs-on: ubuntu-latest
