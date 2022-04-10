@@ -39,20 +39,16 @@ public class Query : IDisposable
     {
         get
         {
-            return _currentResult == null ? _results : EnumerateResults();
+            return _resultsEnumerated ? _results : EnumerateResults();
         }
     }
     private IEnumerable<Dictionary<string, object>> EnumerateResults()
     {
-        if (_currentResult != null)
+        while (_currentResult != null)
         {
             _results.Add(_currentResult);
             yield return _currentResult;
             NextResult();
-        }
-        else
-        {
-            _resultsEnumerated = true;
         }
     }
 
@@ -85,6 +81,7 @@ public class Query : IDisposable
             {
                 case "Done":
                     _currentResult = null;
+                    _resultsEnumerated = true;
                     return;
                 case "Result":
                     _currentResult = _host.DeserializePolarDictionary(data.GetProperty("bindings"));
@@ -413,16 +410,6 @@ public class Query : IDisposable
     internal string? Source
     {
         get => Native.QuerySourceInfo(_handle);
-    }
-
-    /*
-    struct polar_CResult_c_void *polar_bind(struct polar_Query *query_ptr,
-                                            const char *name,
-                                            const char *value);
-    */
-    internal void Bind(string name, string value)
-    {
-        Native.QueryBind(_handle, name, value);
     }
 
     public void Dispose()

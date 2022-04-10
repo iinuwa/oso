@@ -99,7 +99,9 @@ internal static class Native
     {
         unsafe
         {
-            return GetQueryResult(polar_new_query_from_term(polar, queryTerm, trace), host);
+            var queryPtr = polar_new_query_from_term(polar, queryTerm, trace);
+            ProcessMessages(polar);
+            return GetQueryResult(queryPtr, host);
         }
     }
 
@@ -108,11 +110,9 @@ internal static class Native
         Query query;
         unsafe
         {
-            query = GetQueryResult(polar_new_query_from_term(polar, queryTerm, trace), host);
-        }
-        foreach (var (name, value) in bindings)
-        {
-            query.Bind(name, host.SerializePolarTerm(value).ToString());
+            var queryPtr = polar_new_query_from_term(polar, queryTerm, trace);
+            ProcessMessages(polar);
+            query = GetQueryResult(queryPtr, host, bindings);
         }
         return query;
     }
@@ -408,7 +408,7 @@ internal static class Native
 
     }
 
-    private static unsafe Query GetQueryResult(QueryResult* ptr, Host host)
+    private static unsafe Query GetQueryResult(QueryResult* ptr, Host host, Dictionary<string, object>? bindings = null)
     {
         unsafe
         {
@@ -416,8 +416,17 @@ internal static class Native
             {
                 if (ptr->error == IntPtr.Zero)
                 {
+                    var queryHandle = new QueryHandle(ptr->result);
+
+                    if (bindings != null)
+                    {
+                        foreach (var (k, v) in bindings)
+                        {
+                            QueryBind(queryHandle, k, host.SerializePolarTerm(v).ToString());
+                        }
+                    }
                     // TODO: when is the query string freed?
-                    return new Query(new QueryHandle(ptr->result), host);
+                    return new Query(queryHandle, host);
                 }
                 else
                 {

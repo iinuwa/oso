@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using System.Text.Json;
 using Oso.Ffi;
 
@@ -160,7 +160,7 @@ public class Polar : IDisposable
         var host = Host.Clone();
         host.AcceptExpression = acceptExpression;
         var query = host.SerializePolarTerm(predicate).ToString();
-        return Native.NewQueryFromTerm(_handle, host, query, 0);
+        return Native.NewQueryFromTerm(_handle, host, query, bindings, 0);
     }
 
     public Query QueryRule(string rule, params object?[] args) => QueryRule(rule, null, args);
