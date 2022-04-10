@@ -173,6 +173,15 @@ public class Polar : IDisposable
             : Native.NewQueryFromTerm(_handle, host, predicate, bindings, 0);
     }
 
+    /// <summary>
+    /// Query for a rule, and check if it has any results. Returns true if there are results, and false
+    /// if not.
+    /// </summary>
+    /// 
+    /// <param name="rule">Rule name, e.g. <c>f</c> for rule <c>f(x)</c>.</param>
+    /// <param name="args">Variable list of rule arguments.</param>
+    public bool QueryRuleOnce(string rule, params object[] args) => QueryRule(rule, new(), args).Results.Any();
+
     // struct polar_CResult_c_char *polar_next_polar_message(struct polar_Polar *polar_ptr);
     // TODO: Turn this into an IEnumerator?
     /*

@@ -91,7 +91,7 @@ public class Host
     {
         if (_classes.TryGetValue(className, out Type? t))
         {
-            return ParsePolarTerm(instance).GetType() == t;
+            return ParsePolarTerm(instance)?.GetType() == t;
         }
         else throw new OsoException($"Unregistered class: {className}");
     }
@@ -112,7 +112,7 @@ public class Host
     /// <summary>
     /// Turn a Polar term passed across the FFI boundary into an <see cref="object" />.
     /// </summary>
-    public object ParsePolarTerm(JsonElement term)
+    public object? ParsePolarTerm(JsonElement term)
     {
         /*
             {
