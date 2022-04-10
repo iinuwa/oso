@@ -100,7 +100,9 @@ public class Host
     /// </summary>
     internal bool IsSubclass(string leftTag, string rightTag)
     {
-        throw new NotImplementedException();
+        if (!_classes.TryGetValue(leftTag, out Type? leftClass)) throw new OsoException($"Unregistered class exception: {leftTag}");
+        if (!_classes.TryGetValue(rightTag, out Type? rightClass)) throw new OsoException($"Unregistered class exception: {leftTag}");
+        return rightClass.IsAssignableFrom(leftClass);
     }
 
     /// <summary>
