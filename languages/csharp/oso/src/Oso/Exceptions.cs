@@ -115,3 +115,26 @@ public class InvalidConstructorException : PolarRuntimeException
 {
     public InvalidConstructorException(string? message) : base(message) { }
 }
+
+public class AuthorizationException : OsoException
+{
+    public AuthorizationException(string message) : base(message) { }
+}
+
+public class ForbiddenException : AuthorizationException
+{
+    public ForbiddenException() : base(
+          "Oso ForbiddenException -- The requested action was not allowed for the "
+              + "given resource. You should handle this error by returning a 403 error "
+              + "to the client.")
+    { }
+}
+public class NotFoundException : AuthorizationException
+{
+    public NotFoundException() :
+      base(
+          "Oso NotFoundException -- The current user does not have permission to "
+              + "read the given resource. You should handle this error by returning a "
+              + "404 error to the client.")
+    { }
+}

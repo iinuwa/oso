@@ -68,4 +68,46 @@ public class Oso : Polar
             }).ToHashSet();
     }
 
+    /// <summary>
+    /// Ensure that <paramref name="actor" /> is allowed to perform <paramref name="action" /> on <paramref name="resource" />.
+    /// </summary>
+    /// 
+    /// <remarks>
+    /// <para>
+    /// If the action is permitted with an <c>allow</c> rule in the policy, then this method returns
+    /// without error. If the action is not permitted by the policy, this method will raise an error.
+    /// </para>
+    /// 
+    /// <para>
+    /// The error raised by this method depends on whether the actor can perform the <c>"read"</c> action
+    /// on the resource. If they cannot read the resource, then a <see cref="NotFoundException" /> is raised.
+    /// Otherwise, a <see cref="ForbiddenException" /> is raised.
+    /// </para>
+    /// </remarks>
+    /// 
+    /// <param name="actor">The actor performing the request.</param>
+    /// <param name="action">The action the actor is attempting to perform.</param>
+    /// <param name="resource">The resource being accessed.</param>
+    /// <param name="checkRead">
+    ///     If set to <c>false</c>, a <see cref="ForbiddenException" /> is always thrown on authorization
+    ///     failures, regardless of whether the actor can read the resource. Default is <c>true</c>.</param>
+    /// <throws name="OsoException" />
+    public void Authorize(object actor, object action, object resource, bool checkRead = true)
+    {
+        bool authorized = QueryRuleOnce("allow", actor, action, resource);
+        if (authorized)
+        {
+            return;
+        }
+        // Authorization failure. Determine whether to throw a NotFoundException or
+        // a ForbiddenException.
+        if (checkRead)
+        {
+            if (action == ReadAction || !QueryRuleOnce("allow", actor, ReadAction, resource))
+            {
+                throw new NotFoundException();
+            }
+        }
+        throw new ForbiddenException();
+    }
 }
