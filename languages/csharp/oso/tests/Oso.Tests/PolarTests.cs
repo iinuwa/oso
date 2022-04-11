@@ -697,19 +697,20 @@ public class PolarTests
         Assert.Equal("Invalid iterator: value Oso.Tests.PolarTests+NotIterable of type Oso.Tests.PolarTests+NotIterable is not iterable", exception.Message);
 
         // custom iterators work
+        polar.RegisterClass(typeof(BarIterator), "BarIterator");
+
         List<Dictionary<string, object>> expected1 = new()
         {
             new() { { "x", 1 } },
             new() { { "x", 2 } },
             new() { { "x", 3 } },
         };
-        polar.RegisterClass(typeof(BarIterator), "BarIterator");
         Assert.Equal(expected1, polar.NewQuery("x in new BarIterator([1, 2, 3])", 0).Results, new ResultsComparer());
+
         List<Dictionary<string, object>> expected2 = new()
         {
             new() { { "x", 6 } },
         };
-
         Assert.Equal(expected2, polar.NewQuery("x = new BarIterator([1, 2, 3]).Sum()", 0).Results, new ResultsComparer());
     }
 
@@ -802,7 +803,7 @@ public class PolarTests
         var polar = new Polar();
         polar.RegisterClass(typeof(User), "User");
         polar.RegisterClass(typeof(Post), "Post");
-        polar.LoadStr("f(x: User) if x.user = 1; f(x: Post) if x.post = 1;");
+        polar.LoadStr("f(x: User) if x.User = 1; f(x: Post) if x.Post = 1;");
 
         Variable x = new Variable("x");
         Predicate rule = new Predicate("f", new List<object>() { x });

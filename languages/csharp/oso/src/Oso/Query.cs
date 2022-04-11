@@ -9,7 +9,7 @@ public class Query : IDisposable
 
     private readonly QueryHandle _handle;
     private readonly Host _host;
-    private Dictionary<ulong, IEnumerable<object>> _calls = new();
+    private Dictionary<ulong, IEnumerator<object>> _calls = new();
 
     private Dictionary<string, object>? _currentResult;
 
@@ -274,27 +274,22 @@ public class Query : IDisposable
             var result = _host.ParsePolarTerm(iterable);
             _calls[callId] = result switch
             {
-                IEnumerable<object> oList => oList,
-                IEnumerable<int> intList => intList.Cast<object>(),
-                IEnumerable<double> doubleList => doubleList.Cast<object>(),
-                IEnumerable<float> floatList => floatList.Cast<object>(),
-                IEnumerable<bool> boolList => boolList.Cast<object>(),
+                IEnumerable<object> oList => oList.GetEnumerator(),
+                IEnumerable<int> intList => intList.Cast<object>().GetEnumerator(),
+                IEnumerable<double> doubleList => doubleList.Cast<object>().GetEnumerator(),
+                IEnumerable<float> floatList => floatList.Cast<object>().GetEnumerator(),
+                IEnumerable<bool> boolList => boolList.Cast<object>().GetEnumerator(),
                 _ => throw new OsoException($"Invalid iterator: value {result.ToString()} of type {result.GetType()} is not iterable"),
             };
         }
-        string cachedResult;
-        try
+        if (_calls.TryGetValue(callId, out IEnumerator<object>? e))
         {
-            var call = _calls.ContainsKey(callId)
-                ? _calls[callId].First()
-                : throw new Exception($"Unregistered call ID: {callId}");
-            cachedResult = _host.SerializePolarTerm(call).ToString();
+            e.MoveNext();
+            var call = e.Current;
+            var cachedResult = _host.SerializePolarTerm(call).ToString();
+            Native.CallResult(_handle, callId, cachedResult);
         }
-        catch (KeyNotFoundException)
-        {
-            cachedResult = "null";
-        }
-        Native.CallResult(_handle, callId, cachedResult);
+        else throw new Exception($"Unregistered call ID: {callId}");
     }
 
     /**
