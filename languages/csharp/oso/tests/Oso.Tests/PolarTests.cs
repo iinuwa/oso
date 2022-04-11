@@ -459,13 +459,15 @@ public class PolarTests
         Assert.True(polar.NewQuery("test(1)", 0).Results.Any());
     }
 
-    [Fact(Skip = "TODO: .NET System.String doesn't have a constructor that takes a string")]
+    [Fact]
     public void TestExternalOp()
     {
         var polar = new Polar();
-        Assert.True(polar.NewQuery("new String(\"foo\") == new String(\"foo\")", 0).Results.Any());
+        polar.RegisterClass(typeof(Uri), "Uri");
+        Assert.True(polar.NewQuery("new Uri(\"scheme://foo\") == new Uri(\"scheme://foo\")", 0).Results.Any());
     }
     #endregion
+
     #region Test Parsing
     [Fact]
     public void TestIntegerOverFlowError()
