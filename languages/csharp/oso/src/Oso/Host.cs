@@ -252,6 +252,7 @@ public class Host
         }
         else if (value != null && value.GetType().IsGenericType && value.GetType().GetGenericTypeDefinition() == typeof(Dictionary<,>))
         {
+            writer.WritePropertyName("Dictionary");
             SerializePolarDictionary(writer, value);
         }
         else if (value is Predicate pred)
@@ -274,29 +275,25 @@ public class Host
             SerializePolarList(writer, expression.Args);
             writer.WriteEndObject();
         }
-        /*
         else if (value is Pattern pattern)
         {
-            if (pattern.getTag() == null)
+            writer.WriteStartObject("Pattern");
+            if (pattern.Tag == null)
             {
-                jVal.put("Pattern", toPolarTerm(pattern.getFields()));
+                writer.WriteRawValue(SerializePolarTerm(pattern.Fields).ToString());
             }
             else
             {
-                JsonElement fieldsJSON = new JsonElement();
-                fieldsJSON.put("fields", javaDictionarytoPolar(pattern.getFields()));
-
-                JsonElement instanceJSON = new JsonElement();
-                instanceJSON.put("tag", pattern.getTag());
-                instanceJSON.put("fields", fieldsJSON);
-
-                JsonElement patternJSON = new JsonElement();
-                patternJSON.put("Instance", instanceJSON);
-
-                jVal.put("Pattern", patternJSON);
+                writer.WritePropertyName("Instance");
+                writer.WriteStartObject();
+                writer.WritePropertyName("fields");
+                // TODO: Might need to move Dictionary propertyname out...
+                SerializePolarDictionary(writer, pattern.Fields);
+                writer.WriteString("tag", pattern.Tag);
+                writer.WriteEndObject();
             }
+            writer.WriteEndObject();
         }
-        */
         else
         {
             writer.WriteStartObject("ExternalInstance");
@@ -411,7 +408,6 @@ public class Host
 
     void SerializePolarDictionary(Utf8JsonWriter writer, object dictObject)
     {
-        writer.WritePropertyName("Dictionary");
         writer.WriteStartObject();
         writer.WriteStartObject("fields");
         // Polar only supports dictionaries with string keys. Convert a map to a map of

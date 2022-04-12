@@ -821,7 +821,7 @@ public class PolarTests
             andArgs[0]);
         Assert.Equal(
             new Expression(
-                Operator.Unify, new List<object> { 1, new Expression(Operator.Dot, new() { new Variable("_this"), "user" }) }),
+                Operator.Unify, new List<object> { 1, new Expression(Operator.Dot, new() { new Variable("_this"), "User" }) }),
             andArgs[1]);
     }
 

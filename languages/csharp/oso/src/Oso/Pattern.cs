@@ -2,8 +2,8 @@ namespace Oso;
 
 public class Pattern
 {
-    string Tag { get; set; }
-    Dictionary<string, object> Fields { get; set; }
+    internal string Tag { get; set; }
+    internal Dictionary<string, object> Fields { get; set; }
 
     public Pattern(string tag, Dictionary<string, object> fields)
     {
