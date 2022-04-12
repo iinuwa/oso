@@ -433,11 +433,12 @@ public class PolarTests
         Assert.False(polar.NewQuery("new MyClass(\"foo\", 1) = {foo: 1}", 0).Results.Any());
     }
 
-    [Fact(Skip = "String doesn't contain a constructor string(string args). Does this need to be modified for .NET, or do we need to build this into the Host?")]
+    [Fact]
     public void TestExternalInternalUnify()
     {
         var polar = new Polar();
-        Assert.True(polar.NewQuery("new String(\"foo\") = \"foo\"", 0).Results.Any());
+        polar.RegisterClass(typeof(System.Text.StringBuilder), "StringBuilder");
+        Assert.True(polar.NewQuery("new StringBuilder(\"foo\").ToString() = \"foo\"", 0).Results.Any());
     }
 
     [Fact]
