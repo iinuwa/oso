@@ -183,7 +183,7 @@ public class PolarTests
     }
 
     [Fact]
-    public void TestJavaClassFFIRoundTrip()
+    public void TestDotnetClassFFIRoundTrip()
     {
         var polar = new Polar();
         MyClass instance = new MyClass("test", 1);
