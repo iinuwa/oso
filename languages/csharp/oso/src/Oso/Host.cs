@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Resources;
 using System.Text.Json;
 using Oso.Ffi;
 
@@ -10,6 +12,7 @@ public class Host
     private readonly Dictionary<Type, ulong> _classIds = new();
     private readonly Dictionary<ulong, object?> _instances = new();
     private readonly bool _acceptExpression;
+    private static ResourceManager _resourceManager = new ResourceManager("Oso.Resources.ExceptionMessages", Assembly.GetExecutingAssembly());
 
     internal Host(PolarHandle handle)
     {
@@ -53,8 +56,7 @@ public class Host
     internal object MakeInstance(string className, List<object> constructorArgs, ulong instanceId)
     {
 
-        // TODO: PolarRuntimeException -> UnregisteredClassError
-        if (!_classes.TryGetValue(className, out Type t)) throw new OsoException($"Unregistered class exception: {className}");
+        if (!_classes.TryGetValue(className, out Type? t)) throw new UnregisteredClassException(className);
         var argTypes = constructorArgs.Select(o => o.GetType()).ToArray();
 
         var constructor = t.GetConstructors().FirstOrDefault(c =>
@@ -71,7 +73,7 @@ public class Host
             return false;
         });
 
-        if (constructor == null) throw new OsoException($"Missing constructor for class {className}");
+        if (constructor == null) throw new MissingConstructorException(className);
         object instance;
         try
         {
@@ -79,7 +81,7 @@ public class Host
         }
         catch (Exception e)
         {
-            throw new OsoException($"constructor on class `{className}`: {e.Message}", e);
+            throw new InstantiationException(className, e);
         }
         CacheInstance(instance, instanceId);
         return instance;
@@ -93,7 +95,7 @@ public class Host
         {
             return ParsePolarTerm(instance)?.GetType() == t;
         }
-        else throw new OsoException($"Unregistered class: {className}");
+        else throw new UnregisteredClassException(className);
     }
 
     /// <summary>
@@ -166,17 +168,7 @@ public class Host
             case "Variable":
                 return new Variable(property.Value.GetString());
             case "Expression":
-                if (!AcceptExpression)
-                {
-                    // TODO: More specific exceptions?
-                    // throw new Exceptions.UnexpectedPolarTypeError(Exceptions.UNEXPECTED_EXPRESSION_MESSAGE);
-                    const string unexpectedExpressionMessage = "Received Expression from Polar VM. The Expression type is only supported when\n"
-                        + "using data filtering features. Did you perform an "
-                        + "operation over an unbound variable in your policy?\n\n"
-                        + "To silence this error and receive an Expression result, pass\n"
-                        + "acceptExpression as true to Oso.query.";
-                    throw new OsoException(unexpectedExpressionMessage);
-                }
+                if (!AcceptExpression) throw new UnexpectedPolarTypeException(Exceptions.GetExceptionMessage("UnexpectedPolarExpression"));
                 return new Expression(
                     Enum.Parse<Operator>(property.Value.GetProperty("operator").GetString()),
                     DeserializePolarList(property.Value.GetProperty("args")));
@@ -189,13 +181,10 @@ public class Host
                                                 pattern.Value.GetProperty("tag").GetString(),
                                                 DeserializePolarDictionary(pattern.Value.GetProperty("fields").GetProperty("fields"))),
                     "Dictionary" => new Pattern(null, DeserializePolarDictionary(pattern.Value)),
-                    // _ => throw new Exceptions.UnexpectedPolarTypeError("Pattern: " + patternTag),
-                    _ => throw new OsoException($"Unexpected Polar type error: Pattern: {patternTag}"),
+                    _ => throw new UnexpectedPolarTypeException(Exceptions.GetExceptionMessage("UnexpectedPolarType", $"Pattern: {patternTag}")),
                 };
             default:
-                // throw new Exceptions.UnexpectedPolarTypeError(tag);
-                // TODO: Rename PolarException to OsoException.
-                throw new OsoException($"Unexpected polar type: {tag}");
+                throw new UnexpectedPolarTypeException(Exceptions.GetExceptionMessage("UnexpectedPolarType", tag));
         }
     }
 
@@ -287,7 +276,6 @@ public class Host
                 writer.WritePropertyName("Instance");
                 writer.WriteStartObject();
                 writer.WritePropertyName("fields");
-                // TODO: Might need to move Dictionary propertyname out...
                 SerializePolarDictionary(writer, pattern.Fields);
                 writer.WriteString("tag", pattern.Tag);
                 writer.WriteEndObject();
@@ -344,7 +332,7 @@ public class Host
     {
         if (_classes.TryGetValue(name, out Type? oldType))
         {
-            throw new OsoException($"Attempted to alias {name} as {t}, but {oldType} already has that alias.");
+            throw new DuplicateClassAliasException(name, oldType, t);
         }
 
         _classes[name] = t;
@@ -462,8 +450,7 @@ public class Host
         }
         else
         {
-            //throw new Exceptions.UnexpectedPolarTypeError("Cannot convert map with non-string keys to Polar");
-            throw new OsoException("Unexpected polar type: Cannot convert map with non-string keys to Polar");
+            throw new UnexpectedPolarTypeException("Cannot convert map with non-string keys to Polar");
         }
         writer.WriteEndObject();
         writer.WriteEndObject();
@@ -508,6 +495,6 @@ public class Host
     {
         return _instances.TryGetValue(instanceId, out object? value)
             ? value
-            : throw new OsoException($"Unregistered instance: {instanceId}");
+            : throw new UnregisteredInstanceException(instanceId);
     }
 }

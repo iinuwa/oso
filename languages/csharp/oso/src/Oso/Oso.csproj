@@ -30,4 +30,8 @@
     </Content>
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\ExceptionMessages.restext" />
+  </ItemGroup>
+
 </Project>

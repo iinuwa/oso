@@ -275,9 +275,8 @@ public class PolarTests
     {
         var polar = new Polar();
         polar.RegisterClass(typeof(MyClass), "MyClass");
-        var exception = Assert.Throws<OsoException>(() => polar.RegisterClass(typeof(MyClass), "MyClass"));
-        Assert.Equal("Attempted to alias MyClass as Oso.Tests.MyClass, but Oso.Tests.MyClass already has that alias.", exception.Message);
-        // TODO: Should exceptions end with periods?
+        var exception = Assert.Throws<DuplicateClassAliasException>(() => polar.RegisterClass(typeof(MyClass), "MyClass"));
+        Assert.Equal("Attempted to alias `MyClass` as `Oso.Tests.MyClass`, but `Oso.Tests.MyClass` already has that alias.", exception.Message);
     }
 
     [Fact]
@@ -292,8 +291,8 @@ public class PolarTests
         Assert.Equal(1, ret.Id);
     }
 
-    [Fact]
-    public void TestNoKeywordArgs()
+    [Fact(Skip = "Not yet implemented")]
+    public void TestKeywordArgs()
     {
         var polar = new Polar();
         // TODO: Is this supposed to be RegisterConstant?
@@ -395,8 +394,8 @@ public class PolarTests
         polar.ClearRules();
 
         polar.LoadStr("f(a: OtherClass, x) if x = a.Id;");
-        var exception = Assert.Throws<OsoException>(() => polar.QueryRule("f", new MyClass("test", 1), new Variable("x")));
-        Assert.Equal("Unregistered class: OtherClass", exception.Message);
+        var exception = Assert.Throws<UnregisteredClassException>(() => polar.QueryRule("f", new MyClass("test", 1), new Variable("x")));
+        Assert.Equal("OtherClass", exception.ClassName);
     }
 
     [Fact]
@@ -834,8 +833,7 @@ public class PolarTests
 
         try
         {
-            var exception = Assert.Throws<OsoException>(() => polar.NewQuery("f(x)", 0));
-            Assert.StartsWith("Received Expression from Polar VM.", exception.Message);
+            var exception = Assert.Throws<UnexpectedPolarTypeException>(() => polar.NewQuery("f(x)", 0));
         }
         catch (ThrowsException)
         {

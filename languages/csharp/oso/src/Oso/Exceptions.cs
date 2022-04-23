@@ -1,11 +1,9 @@
+using System.Diagnostics;
+using System.Reflection;
+using System.Resources;
 using System.Text.Json;
 
 namespace Oso;
-
-internal static class Exceptions
-{
-
-}
 
 public class OsoException : Exception
 {
@@ -116,6 +114,51 @@ public class InvalidConstructorException : PolarRuntimeException
     public InvalidConstructorException(string? message) : base(message) { }
 }
 
+public class UnregisteredInstanceException : PolarRuntimeException
+{
+    internal UnregisteredInstanceException(ulong instanceId) : base(Exceptions.GetExceptionMessage("UnregisteredInstance", instanceId)) { }
+}
+
+public class UnregisteredClassException : PolarRuntimeException
+{
+    public string ClassName { get; }
+    internal UnregisteredClassException(string className) : base(Exceptions.GetExceptionMessage("UnregisteredClass", className))
+    {
+        ClassName = className;
+    }
+}
+
+public class UnexpectedPolarTypeException : PolarRuntimeException
+{
+    internal UnexpectedPolarTypeException() : base(Exceptions.GetExceptionMessage("UnexpectedPolarType")) { }
+
+    internal UnexpectedPolarTypeException(string polarType) : base(Exceptions.GetExceptionMessage("UnexpectedPolarType", polarType)) { }
+}
+
+public class MissingConstructorException : PolarRuntimeException
+{
+    public string ClassName { get; }
+    internal MissingConstructorException(string className) : base(Exceptions.GetExceptionMessage("MissingConstructor", className))
+    {
+        ClassName = className;
+    }
+}
+
+public class DuplicateClassAliasException : PolarRuntimeException
+{
+    internal DuplicateClassAliasException(string alias, Type oldClass, Type newClass) : base(Exceptions.GetExceptionMessage("DuplicateClassAlias", alias, oldClass, newClass))
+    {
+    }
+}
+
+public class InstantiationException : PolarRuntimeException
+{
+    public string ClassName { get; }
+    internal InstantiationException(string className, Exception e) : base(Exceptions.GetExceptionMessage("Instantiation", className), e)
+    {
+        ClassName = className;
+    }
+}
 public class AuthorizationException : OsoException
 {
     public AuthorizationException(string message) : base(message) { }
@@ -137,4 +180,19 @@ public class NotFoundException : AuthorizationException
               + "read the given resource. You should handle this error by returning a "
               + "404 error to the client.")
     { }
+}
+
+internal static class Exceptions
+{
+    static ResourceManager _resourceManager = new ResourceManager("Oso.Resources.ExceptionMessages", Assembly.GetExecutingAssembly());
+    internal static string GetExceptionMessage(string messageName)
+    {
+        string? message = _resourceManager.GetString(messageName);
+        Debug.Assert(message != null);
+        return message;
+    }
+    internal static string GetExceptionMessage(string messageName, params object[] args)
+    {
+        return string.Format(GetExceptionMessage(messageName), args);
+    }
 }
