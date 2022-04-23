@@ -59,12 +59,7 @@ public class Oso : Polar
                 if (action["action"] is not Variable) return action["action"];
                 return allowWildcard
                     ? "*"
-                    : throw new OsoException(
-                        "\"The result of authorizedActions contained an \"unconstrained\" action that" +
-                            " could represent any\n" +
-                            " action, but allowWildcard was set to false. To fix,\n" +
-                            " set allowWildcard to true and compare with the \"*\"\n" +
-                            " string.\"");
+                    : throw new OsoException(Exceptions.GetExceptionMessage("UnconstrainedAction"));
             }).ToHashSet();
     }
 
@@ -192,12 +187,7 @@ public class Oso : Polar
                     {
                         return (allowWildcard)
                             ? "*"
-                            : throw new OsoException(
-                            "\"The result of authorizedFields contained an \"unconstrained\" field that"
-                                + " could represent any\n"
-                                + " field, but allowWildcard was set to false. To fix,\n"
-                                + " set allowWildcard to true and compare with the \"*\"\n"
-                                + " string.\"");
+                            : throw new OsoException(Exceptions.GetExceptionMessage("UnconstrainedAction"));
                     }
                 }).ToHashSet();
     }

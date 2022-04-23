@@ -12,7 +12,6 @@ public class Host
     private readonly Dictionary<Type, ulong> _classIds = new();
     private readonly Dictionary<ulong, object?> _instances = new();
     private readonly bool _acceptExpression;
-    private static ResourceManager _resourceManager = new ResourceManager("Oso.Resources.ExceptionMessages", Assembly.GetExecutingAssembly());
 
     internal Host(PolarHandle handle)
     {
