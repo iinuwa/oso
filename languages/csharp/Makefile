@@ -4,7 +4,7 @@ rust:
 	$(MAKE) -C ../.. rust-build
 	# @NOTE: this is just the debug lib. Dont use this for release builds.
 	if [ -e "../../target/debug/libpolar.dylib" ]; then \
-		mkdir -p oso/lib/osx-64; \
+		mkdir -p oso/lib/osx-x64; \
 		cp ../../target/debug/libpolar.dylib oso/lib/osx-x64/; \
 	fi
 	if [ -e "../../target/debug/libpolar.so" ]; then \
