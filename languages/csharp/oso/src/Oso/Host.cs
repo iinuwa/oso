@@ -11,7 +11,7 @@ public class Host
     private readonly Dictionary<string, Type> _classes = new();
     private readonly Dictionary<Type, ulong> _classIds = new();
     private readonly Dictionary<ulong, object?> _instances = new();
-    private readonly bool _acceptExpression;
+    public bool AcceptExpression { get; set; }
 
     internal Host(PolarHandle handle)
     {
@@ -25,12 +25,11 @@ public class Host
         _classes = new(classes);
         _classIds = new(classIds);
         _instances = new(instances);
-        _acceptExpression = acceptExpression;
+        AcceptExpression = acceptExpression;
     }
 
-    internal Host Clone() => new Host(_handle, _classes, _classIds, _instances, _acceptExpression);
+    internal Host Clone() => new Host(_handle, _classes, _classIds, _instances, AcceptExpression);
 
-    public bool AcceptExpression { get; set; }
     public Dictionary<string, object> DeserializePolarDictionary(JsonElement element)
     {
         if (element.ValueKind != JsonValueKind.Object)
