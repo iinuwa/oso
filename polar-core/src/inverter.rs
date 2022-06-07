@@ -5,16 +5,13 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::bindings::{BindingManager, Bsp, FollowerId, VariableState};
 use crate::counter::Counter;
-use crate::error::RuntimeError;
+use crate::error::{PolarError, PolarResult};
 use crate::events::QueryEvent;
-use crate::formatting::ToPolarString;
 use crate::kb::Bindings;
 use crate::partial::simplify_bindings;
 use crate::runnable::Runnable;
 use crate::terms::{Operation, Operator, Term, Value};
 use crate::vm::{Goals, PolarVirtualMachine};
-
-type Result<T> = core::result::Result<T, RuntimeError>;
 
 /// The inverter implements the `not` operation in Polar.
 ///
@@ -80,7 +77,7 @@ impl Inverter {
 fn results_to_constraints(results: Vec<BindingManager>) -> Bindings {
     let inverted = results.into_iter().map(invert_partials).collect();
     let reduced = reduce_constraints(inverted);
-    let simplified = simplify_bindings(reduced).unwrap_or_else(Bindings::new);
+    let simplified = simplify_bindings(reduced).unwrap_or_default();
 
     simplified
         .into_iter()
@@ -108,7 +105,7 @@ fn invert_partials(bindings: BindingManager) -> Bindings {
         new_bindings.insert(var.clone(), term!(constraint));
     }
 
-    let simplified = simplify_bindings(new_bindings).unwrap_or_else(Bindings::new);
+    let simplified = simplify_bindings(new_bindings).unwrap_or_default();
 
     simplified
         .into_iter()
@@ -137,9 +134,7 @@ fn reduce_constraints(bindings: Vec<Bindings>) -> Bindings {
                         }
                         (existing, new) => panic!(
                             "Illegal state reached while reducing constraints for {}: {} → {}",
-                            var,
-                            existing.to_polar(),
-                            new.to_polar()
+                            var, existing, new
                         ),
                     },
                     Entry::Vacant(v) => {
@@ -191,7 +186,7 @@ fn filter_inverted_constraints(
 ///    true.
 /// 3. In all other cases, return false.
 impl Runnable for Inverter {
-    fn run(&mut self, _: Option<&mut Counter>) -> Result<QueryEvent> {
+    fn run(&mut self, _: Option<&mut Counter>) -> PolarResult<QueryEvent> {
         if self.follower.is_none() {
             // Binding followers are used to collect new bindings made during
             // the inversion.
@@ -238,15 +233,15 @@ impl Runnable for Inverter {
         }
     }
 
-    fn external_question_result(&mut self, call_id: u64, answer: bool) -> Result<()> {
+    fn external_question_result(&mut self, call_id: u64, answer: bool) -> PolarResult<()> {
         self.vm.external_question_result(call_id, answer)
     }
 
-    fn external_call_result(&mut self, call_id: u64, term: Option<Term>) -> Result<()> {
+    fn external_call_result(&mut self, call_id: u64, term: Option<Term>) -> PolarResult<()> {
         self.vm.external_call_result(call_id, term)
     }
 
-    fn debug_command(&mut self, command: &str) -> Result<()> {
+    fn debug_command(&mut self, command: &str) -> PolarResult<()> {
         self.vm.debug_command(command)
     }
 
@@ -254,7 +249,7 @@ impl Runnable for Inverter {
         Box::new(self.clone())
     }
 
-    fn handle_error(&mut self, error: RuntimeError) -> Result<QueryEvent> {
+    fn handle_error(&mut self, error: PolarError) -> PolarResult<QueryEvent> {
         self.vm.handle_error(error)
     }
 }

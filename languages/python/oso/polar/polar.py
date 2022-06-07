@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import os
 from pathlib import Path
 import sys
-from typing import Dict, List, Union
+from typing import List, Union
 
 from .exceptions import (
     PolarRuntimeError,
@@ -20,16 +20,14 @@ from .query import Query
 from .predicate import Predicate
 from .variable import Variable
 from .expression import Expression, Pattern
-from .data_filtering import serialize_types, filter_data
+from .data_filtering import serialize_types
 from .data import DataFilter
-
-CLASSES: Dict[str, type] = {}
 
 
 class Polar:
     """Polar API"""
 
-    def __init__(self, classes=CLASSES):
+    def __init__(self):
         self.ffi_polar = FfiPolar()
         self.host = Host(self.ffi_polar)
         self.ffi_polar.set_message_enricher(self.host.enrich_message)
@@ -47,10 +45,6 @@ class Polar:
         self.register_class(datetime, name="Datetime")
         self.register_class(timedelta, name="Timedelta")
 
-        # Pre-registered classes.
-        for name, cls in classes.items():
-            self.register_class(cls, name=name)
-
     def __del__(self):
         del self.host
         del self.ffi_polar
@@ -66,7 +60,7 @@ class Polar:
             path = Path(filename)
             extension = path.suffix
             filename = str(path)
-            if not extension == ".polar":
+            if extension != ".polar":
                 raise PolarFileExtensionError(filename)
 
             try:
@@ -101,7 +95,6 @@ class Polar:
 
     # Register MROs, load Polar code, and check inline queries.
     def _load_sources(self, sources: List[Source]):
-        self.host.register_mros()
         self.ffi_polar.load(sources)
         self.check_inline_queries()
 
@@ -235,9 +228,6 @@ class Polar:
         *,
         name=None,
         fields=None,
-        build_query=None,
-        exec_query=None,
-        combine_query=None
     ):
         """
         Register `cls` as a class accessible by Polar.
@@ -248,24 +238,16 @@ class Polar:
         :param fields:
             Optional dict mapping field names to types or Relation objects for
             data filtering.
-        :param build_query:
-            Optional function to generate a query for resources of type `cls`
-            from a list of Filters.
-        :param exec_query:
-            Optional function to execute a query produced by `build_query`.
-        :param combine_query:
-            Optional function to merge two queries produced by `build_query`.
         """
         # TODO: let's add example usage here or at least a proper docstring for the arguments
-        cls_name = self.host.cache_class(
+
+        name = self.host.cache_class(
             cls,
             name=name,
             fields=fields,
-            build_query=build_query,
-            exec_query=exec_query,
-            combine_query=combine_query,
         )
-        self.register_constant(cls, cls_name)
+        self.register_constant(cls, name)
+        self.host.register_mros()
 
     def register_constant(self, value, name):
         """
@@ -310,15 +292,6 @@ class Polar:
     def is_new_data_filtering_configured(self):
         return self.host.adapter is not None
 
-    def old_authorized_query(self, actor, action, resource_cls):
-        results = self.partial_query(actor, action, resource_cls)
-
-        types = serialize_types(self.host.distinct_user_types(), self.host.types)
-        class_name = self.host.types[resource_cls].name
-        plan = self.ffi_polar.build_filter_plan(types, results, "resource", class_name)
-
-        return filter_data(self, plan)
-
     def new_authorized_query(self, actor, action, resource_cls):
         results = self.partial_query(actor, action, resource_cls)
 
@@ -327,18 +300,3 @@ class Polar:
         plan = self.ffi_polar.build_data_filter(types, results, "resource", class_name)
 
         return self.host.adapter.build_query(DataFilter.parse(self, plan))
-
-
-def polar_class(_cls=None, *, name=None):
-    """Decorator to register a Python class with Polar.
-    An alternative to ``register_class()``."""
-
-    def wrap(cls):
-        cls_name = cls.__name__ if name is None else name
-        CLASSES[cls_name] = cls
-        return cls
-
-    if _cls is None:
-        return wrap
-
-    return wrap(_cls)

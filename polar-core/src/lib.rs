@@ -8,6 +8,7 @@ extern crate maplit;
 pub mod macros;
 
 mod bindings;
+mod constants;
 mod counter;
 pub mod data_filtering;
 mod debugger;
@@ -16,7 +17,7 @@ pub mod error;
 pub mod events;
 pub mod filter;
 mod folder;
-pub mod formatting;
+mod formatting;
 mod inverter;
 pub mod kb;
 mod lexer;
@@ -38,3 +39,5 @@ mod validations;
 mod visitor;
 mod vm;
 pub mod warning;
+
+pub use lexer::loc_to_pos;

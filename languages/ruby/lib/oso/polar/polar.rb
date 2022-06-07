@@ -217,6 +217,7 @@ module Oso
           exec_query: exec_query || maybe_mtd(cls, :exec_query)
         )
         register_constant(cls, name: name)
+        host.register_mros
       end
 
       # Register a Ruby object with Polar.
@@ -275,13 +276,6 @@ module Oso
         plan = ffi.build_data_filter(types, partials, 'resource', class_name)
         filter = ::Oso::Polar::Data::Filter.parse(self, plan)
         host.adapter.build_query filter
-      end
-
-      def old_authorized_query(actor, action, resource_cls)
-        results = partial_query(actor, action, resource_cls)
-        ::Oso::Polar::DataFiltering::FilterPlan
-          .parse(self, results, class_to_name(resource_cls))
-          .build_query
       end
 
       # handle Isa constraints in a partial query
@@ -343,7 +337,6 @@ module Oso
       # Register MROs, load Polar code, and check inline queries.
       # @param sources [Array<Source>] Polar sources to load.
       def load_sources(sources)
-        host.register_mros
         ffi_polar.load(sources)
         check_inline_queries
       end

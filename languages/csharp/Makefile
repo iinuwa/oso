@@ -3,9 +3,13 @@
 rust:
 	$(MAKE) -C ../.. rust-build
 	# @NOTE: this is just the debug lib. Dont use this for release builds.
-	if [ -e "../../target/debug/libpolar.dylib" ]; then \
+	if [ -e "../../target/x86_64-apple-darwin/debug/libpolar.dylib" ]; then \
 		mkdir -p oso/lib/osx-x64; \
-		cp ../../target/debug/libpolar.dylib oso/lib/osx-x64/; \
+		cp ../../target/x86_64-apple-darwin/debug/libpolar.dylib oso/lib/osx-x64/; \
+	fi
+	if [ -e "../../target/aarch64-apple-darwin/debug/libpolar.dylib" ]; then \
+		mkdir -p oso/lib/osx-arm64; \
+		cp ../../target/aarch64-apple-darwin/debug/libpolar.dylib oso/lib/osx-arm64/; \
 	fi
 	if [ -e "../../target/debug/libpolar.so" ]; then \
 		mkdir -p oso/lib/linux-x64; \

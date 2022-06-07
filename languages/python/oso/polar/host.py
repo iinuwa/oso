@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from math import inf, isnan, nan
 import re
 import inspect
-from typing import Any, Dict, Optional, Callable, Union
+from typing import Any, Dict, Union
 
 
 from .exceptions import (
@@ -19,6 +19,7 @@ from .exceptions import (
 from .variable import Variable
 from .predicate import Predicate
 from .expression import Expression, Pattern
+from .data_filtering import Relation
 
 
 @dataclass
@@ -27,9 +28,6 @@ class UserType:
     cls: type
     id: int
     fields: Dict[str, Any]
-    build_query: Optional[Callable]
-    exec_query: Optional[Callable]
-    combine_query: Optional[Callable]
 
 
 class Host:
@@ -51,9 +49,6 @@ class Host:
         self.types = (types or {}).copy()
         self.instances = (instances or {}).copy()
         self._accept_expression = False  # default, see set_accept_expression
-        self.build_query = None
-        self.exec_query = None
-        self.combine_query = None
         self.adapter = adapter
 
         self.get_field = get_field or self.types_get_field
@@ -69,6 +64,9 @@ class Host:
         if field not in rec.fields:
             raise PolarRuntimeError(f"No field {field} on {obj.__name__}")
         field_type = rec.fields[field]
+
+        if not isinstance(field_type, Relation):
+            return field_type
 
         if field_type.kind == "one":
             return self.types[field_type.other_type].cls
@@ -105,9 +103,6 @@ class Host:
         cls,
         name=None,
         fields=None,
-        build_query=None,
-        exec_query=None,
-        combine_query=None,
     ):
         """Cache Python class by name."""
         name = cls.__name__ if name is None else name
@@ -119,9 +114,6 @@ class Host:
             cls=cls,
             id=self.cache_instance(cls),
             fields=fields or {},
-            build_query=build_query or self.build_query,
-            exec_query=exec_query or self.exec_query,
-            combine_query=combine_query or self.combine_query,
         )
         return name
 
@@ -302,23 +294,30 @@ class Host:
         #       ]
         #   }
         else:
-            instance_id = None
             import inspect
+
+            instance_id = None
+            class_id = None
 
             # maintain consistent IDs for registered classes
             if inspect.isclass(v):
                 if v in self.types:
-                    instance_id = self.types[v].id
+                    class_id = instance_id = self.types[v].id
 
             # pass the class_repr only for registered types otherwise None
-            class_repr = type(v).__name__
-            class_repr = class_repr if class_repr in self.types else None
+            class_repr = self.types[type(v)].name if type(v) in self.types else None
+
+            # pass class_id for classes & instances of registered classes,
+            # otherwise pass None
+            if type(v) in self.types:
+                class_id = self.types[type(v)].id
 
             val = {
                 "ExternalInstance": {
                     "instance_id": self.cache_instance(v, instance_id),
                     "repr": None,
                     "class_repr": class_repr,
+                    "class_id": class_id,
                 }
             }
         term = {"value": val}

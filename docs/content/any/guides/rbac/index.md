@@ -1,6 +1,6 @@
 ---
 title: Build Role-Based Access Control (RBAC)
-metaTitle: Build Role-Based Access Control (RBAC) in $LANG
+metaTitle: Build Role-Based Access Control (RBAC) in $LANG with Oso
 weight: -1
 description: |
   Build role-based access control (RBAC) with Oso's built-in authorization
@@ -9,9 +9,10 @@ aliases:
   - /guides/roles/index.html
   - /guides/roles/sqlalchemy/index.html
   - /getting-started/rbac.html
+  - /guides/new-roles.html
 ---
 
-# Build Role-Based Access Control (RBAC) in {{% lang %}}
+# Build Role-Based Access Control (RBAC) in {{% lang %}} with Oso
 
 Role-based access control (RBAC) is so ubiquitous that Oso provides
 syntax for modeling RBAC. This syntax makes it easy to create a role-based
@@ -21,6 +22,12 @@ repository.
 
 In this guide, we'll walk through building an RBAC policy for [GitClub][].
 
+{{% ifLang python %}}
+To learn more about the fundamentals of Role-Based Access Control in
+Python, visit our page on [RBAC Python][].
+{{% /ifLang %}}
+
+[RBAC Python]: https://www.osohq.com/learn/rbac-python
 [GitClub]: https://github.com/osohq/gitclub
 
 ## Declare application types as actors and resources
@@ -224,8 +231,7 @@ change that and see how Oso can leverage parent-child relationships like the
 one between `Repository` and `Organization` to grant a role on a child resource
 to a role on the parent.
 
-<!-- TODO(gj): better heading -->
-## Grant a role on a child resource to a role on the parent
+## Inherit a role on a child resource from the parent
 
 If you've used ~~GitHub~~ *GitClub* before, you know that having a role on an
 organization grants certain roles and permissions on that organization's

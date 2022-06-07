@@ -1,9 +1,7 @@
 from polar import (
-    polar_class,
     Variable,
     Predicate,
     Relation,
-    Filter,
     DataFilter,
 )
 from .oso import Oso

@@ -4,7 +4,6 @@ from pathlib import Path
 from enum import Enum
 
 from polar import (
-    polar_class,
     exceptions,
     Polar,
     Predicate,
@@ -438,10 +437,11 @@ def test_runtime_errors(polar, query):
     with pytest.raises(exceptions.PolarRuntimeError) as e:
         query("foo(1,2)")
     assert """trace (most recent evaluation last):
-  in query at line 1, column 1
-    foo(1,2)
-  in rule foo at line 2, column 17
-    a in b
+  002: foo(1,2)
+    in query at line 1, column 1
+  001: a in b
+    in rule foo at line 2, column 17
+
 Type error: can only use `in` on an iterable value, this is Number(Integer(2)) at line 1, column 7""" in str(
         e.value
     )
@@ -696,40 +696,6 @@ def test_inf_nan(polar, qeval, query):
     assert not query("inf = neg_inf")
     assert not query("inf < neg_inf")
     assert qeval("neg_inf < inf")
-
-
-def test_register_constants_with_decorator():
-    @polar_class
-    class RegisterDecoratorTest:
-        x = 1
-
-    p = Polar()
-    p.load_str(
-        """foo_rule(_: RegisterDecoratorTest, y) if y = 1;
-           foo_class_attr(y) if y = RegisterDecoratorTest.x;"""
-    )
-    assert (
-        next(p.query_rule("foo_rule", RegisterDecoratorTest(), Variable("y")))[
-            "bindings"
-        ]["y"]
-        == 1
-    )
-    assert next(p.query_rule("foo_class_attr", Variable("y")))["bindings"]["y"] == 1
-
-    p.clear_rules()
-
-    p = Polar()
-    p.load_str(
-        """foo_rule(_: RegisterDecoratorTest, y) if y = 1;
-           foo_class_attr(y) if y = RegisterDecoratorTest.x;"""
-    )
-    assert (
-        next(p.query_rule("foo_rule", RegisterDecoratorTest(), Variable("y")))[
-            "bindings"
-        ]["y"]
-        == 1
-    )
-    assert next(p.query_rule("foo_class_attr", Variable("y")))["bindings"]["y"] == 1
 
 
 def test_unbound_variable(polar, query):
@@ -1016,7 +982,11 @@ def test_isa_with_path(polar, query):
     polar.register_class(Baz, fields={"bar": Bar})
 
     polar.load_str(
-        "f(x: Integer) if x = 0; g(x: Baz) if f(x.bar.foo.num); h(x: Bar) if f(x.num);"
+        """
+        f(x: Integer) if x = 0;
+        g(x: Baz) if f(x.bar.foo.num);
+        h(x: Bar) if f(x.num);
+    """
     )
     results = query("g(x)", accept_expression=True)
     assert len(results) == 1

@@ -43,7 +43,7 @@ class Source {
 }
 
 /** Create and manage an instance of the Polar runtime. */
-export class Polar {
+export class Polar<Query, Resource> {
   /**
    * Internal WebAssembly module.
    *
@@ -56,7 +56,7 @@ export class Polar {
    *
    * @internal
    */
-  #host: Host;
+  #host: Host<Query, Resource>;
 
   constructor(opts: Options = {}) {
     this.#ffiPolar = new FfiPolar();
@@ -171,7 +171,6 @@ export class Polar {
 
   // Register MROs, load Polar code, and check inline queries.
   private async loadSources(sources: Source[]): Promise<void> {
-    this.getHost().registerMros();
     this.#ffiPolar.load(sources);
     this.processMessages();
     return this.checkInlineQueries();
@@ -244,6 +243,7 @@ export class Polar {
   registerClass(cls: Class, params?: ClassParams): void {
     const clsName = this.getHost().cacheClass(cls, params);
     this.registerConstant(cls, clsName);
+    this.getHost().registerMros();
   }
 
   /**
@@ -254,7 +254,7 @@ export class Polar {
     this.#ffiPolar.registerConstant(name, term);
   }
 
-  getHost(): Host {
+  getHost(): Host<Query, Resource> {
     return this.#host;
   }
 

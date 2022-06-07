@@ -25,6 +25,7 @@ ForbiddenException
 FriendsOnlyFields
 GC
 GDB
+GORM
 GSuite
 GitClub
 GitLab
@@ -52,12 +53,15 @@ MyPy
 NFA
 NaN
 NestJS
+NewType
+NewTypes
 NotFoundError
 NotFoundException
 OAuth
 ORM
 ORMs
 Oso's
+POSIX
 Polar's
 Postgres
 Pre
@@ -75,6 +79,7 @@ SLA
 SQL
 SQLAlchemy
 SQLAlchemy's
+SQLBoiler
 SQLite
 STDIN
 SaaS
@@ -113,10 +118,12 @@ cURL
 cgo
 changelog
 classpath
+cmp
 codebase
 constructable
 coroutine
 customizations
+dataFilter
 dataloader
 dataloaders
 dataset
@@ -137,8 +144,12 @@ enum
 enumerables
 enums
 favoriteAnimal
+fieldName
 filesystem
+filterRelation
 forbiddenerror
+fromFieldName
+fromTypeName
 frontend
 glibc
 gmail
@@ -156,10 +167,12 @@ io
 isAllowed
 iterable
 iterables
+jackdreillyvia
 js
 lastCheckInLocation
 lastLogin
 latencies
+lhs
 lifecycle
 loadFile
 loadStr
@@ -170,6 +183,8 @@ mailto
 mainClass
 metacharacter
 metacharacters
+microservice
+microservices
 middleware
 mixin
 moduli
@@ -200,6 +215,7 @@ registerClass
 repl
 repo
 repositoryRoles
+rhs
 roadmap
 roleName
 runnable
@@ -216,10 +232,12 @@ subclasses
 submittedBy
 superclasses
 superset
+toTypeName
 toolchain
 traceback
 transactional
 txt
+typeName
 un
 unary
 unifications
@@ -228,4 +246,5 @@ unsafety
 unspecialized
 untaken
 vec
+vendoring
 webpack

@@ -8,7 +8,7 @@ weight: 4
 
 # The Polar Language
 
-The Oso authorization library uses the Polar programming language to express authorization logic and policies. This guide is an introduction to the Polar language: what it is, how it works, why we've chosen to use it. For a more complete guide to syntax, use our [Syntax Guide](https://www.notion.so/Concepts-The-Polar-Language-0c59f78527bb470bbefb173ebf85ed69).
+The Oso authorization library uses the Polar programming language to express authorization logic and policies. This guide is an introduction to the Polar language: what it is, how it works, why we've chosen to use it. For a more complete guide to syntax, use our [Syntax Guide](reference/polar/polar-syntax).
 
 ## Declarative Programming
 
@@ -38,7 +38,7 @@ Polar is also a [logic programming language](https://en.wikipedia.org/wiki/Logic
 ## How Polar code executes
 
 > For the next few examples, we'll use only the base language, without touching authorization just yet.
-> 
+>
 
 Here's one Polar rule.
 
@@ -111,8 +111,8 @@ True
 
 Our program has deduced the grandfather of Asclepius!
 
-Most Polar rules you'll see are in this `statement if condition;` form. That's where we'll wrap up this guide—to dive deeper into Polar syntax, we have a Polar **[Syntax Guide](https://www.notion.so/Concepts-The-Polar-Language-0c59f78527bb470bbefb173ebf85ed69)**.
+Most Polar rules you'll see are in this `statement if condition;` form. That's where we'll wrap up this guide—to dive deeper into Polar syntax, we have a Polar **[Syntax Guide](reference/polar/polar-syntax)**.
 
 We haven’t covered how to use Polar to express particular authorization policies. Many Polar examples can be found in our [authorization guides](https://docs.osohq.com/guides.html).
 
-We're also always happy to help you get started with Oso! If you'd like to learn more about using Oso in your app or have any questions, [schedule a 1x1 with an Oso engineer](https://calendly.com/osohq/1-on-1).
+We're also always happy to help you get started with Oso! If you'd like to learn more about using Oso in your app or have any questions, [schedule a 1x1 with an Oso engineer](https://calendly.com/osohq/1-on-1?utm_source=library_docs&utm_content=polar_foundations).

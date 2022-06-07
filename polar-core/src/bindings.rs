@@ -4,13 +4,11 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    error::RuntimeError,
+    error::{PolarResult, RuntimeError},
     folder::{fold_list, fold_term, Folder},
     terms::{has_rest_var, Operation, Operator, Symbol, Term, Value},
     vm::Goal,
 };
-
-type Result<T> = core::result::Result<T, RuntimeError>;
 
 #[derive(Clone, Debug)]
 pub struct Binding(pub Symbol, pub Term);
@@ -162,11 +160,12 @@ impl BindingManager {
     ///
     /// If the binding succeeds, the new expression is returned as a goal. Otherwise,
     /// an error is returned.
-    fn partial_bind(&mut self, partial: Operation, var: &Symbol, val: Term) -> Result<Goal> {
+    fn partial_bind(&mut self, partial: Operation, var: &Symbol, val: Term) -> PolarResult<Goal> {
         match partial.ground(var, val.clone()) {
             None => Err(RuntimeError::IncompatibleBindings {
                 msg: "Grounding failed A".into(),
-            }),
+            }
+            .into()),
             Some(grounded) => {
                 self.add_binding(var, val);
                 Ok(Goal::Query {
@@ -204,10 +203,10 @@ impl BindingManager {
     ///
     /// If a binding between two variables is made, and one is bound and the other unbound, the
     /// unbound variable will take the value of the bound one.
-    pub fn bind(&mut self, var: &Symbol, val: Term) -> Result<Option<Goal>> {
+    pub fn bind(&mut self, var: &Symbol, val: Term) -> PolarResult<Option<Goal>> {
         use BindingManagerVariableState::*;
         let mut goal = None;
-        if let Ok(symbol) = val.value().as_symbol() {
+        if let Ok(symbol) = val.as_symbol() {
             goal = self.bind_variables(var, symbol)?;
         } else {
             match self._variable_state(var) {
@@ -220,7 +219,8 @@ impl BindingManager {
                 Bound(_) => {
                     return Err(RuntimeError::IncompatibleBindings {
                         msg: format!("Cannot rebind {:?}", var),
-                    })
+                    }
+                    .into())
                 }
                 _ => self.add_binding(var, val.clone()),
             }
@@ -258,11 +258,11 @@ impl BindingManager {
     /// `term` must be an expression`.
     ///
     /// An error is returned if the constraint is incompatible with existing constraints.
-    pub fn add_constraint(&mut self, term: &Term) -> Result<()> {
+    pub fn add_constraint(&mut self, term: &Term) -> PolarResult<()> {
         use BindingManagerVariableState::*;
         self.do_followers(|_, follower| follower.add_constraint(term))?;
 
-        assert!(term.value().as_expression().is_ok());
+        assert!(term.as_expression().is_ok());
         let mut op = op!(And, term.clone());
 
         // include all constraints applying to any of its variables.
@@ -286,7 +286,8 @@ impl BindingManager {
                     None => {
                         return Err(RuntimeError::IncompatibleBindings {
                             msg: "Grounding failed B".into(),
-                        })
+                        }
+                        .into())
                     }
                 }
             }
@@ -428,7 +429,7 @@ impl BindingManager {
 // Private impls.
 impl BindingManager {
     /// Bind two variables together.
-    fn bind_variables(&mut self, left: &Symbol, right: &Symbol) -> Result<Option<Goal>> {
+    fn bind_variables(&mut self, left: &Symbol, right: &Symbol) -> PolarResult<Option<Goal>> {
         use BindingManagerVariableState::*;
         match (
             // rebinding the variable with its state makes it possible
@@ -509,7 +510,8 @@ impl BindingManager {
                 } else {
                     Err(RuntimeError::IncompatibleBindings {
                         msg: format!("{} and {} are both bound", left, right),
-                    })
+                    }
+                    .into())
                 }
             }
 
@@ -521,16 +523,22 @@ impl BindingManager {
 
             // partial x partial -- if they already overlap, do nothing.
             // else rebind vars as a 2-cycle & requery
-            ((_, Partial(lp)), (_, Partial(rp))) => {
+            ((lv, Partial(lp)), (rv, Partial(rp))) => {
                 if rp.variables().contains(left) {
                     Ok(None)
                 } else {
-                    let (lp, rp) = (lp.clone(), rp.clone());
-                    self.add_binding(left, term!(right.clone()));
-                    self.add_binding(right, term!(left.clone()));
+                    // Merge the two partials.
+                    let merged = lp.clone().merge_constraints(rp.clone());
 
-                    let term = term!(op!(And, term!(lp), term!(rp)));
-                    Ok(Some(Goal::Query { term }))
+                    // Express the partial in terms of lv (bind rv to lv, replacing all rv in partial with lv).
+                    let goal = self.partial_bind(merged, rv, term!(lv.clone()))?;
+
+                    // Unification from lv = rv (remember that vars are equal so that the
+                    // simplifier can later choose the correct one). We do this
+                    // after the partial bind so that we don't recursively query the unification.
+                    let unify = term!(op!(Unify, term!(lv.clone()), term!(rv.clone())));
+                    self.add_constraint(&unify)?;
+                    Ok(Some(goal))
                 }
             }
         }
@@ -586,9 +594,9 @@ impl BindingManager {
         Unbound
     }
 
-    fn do_followers<F>(&mut self, mut func: F) -> Result<()>
+    fn do_followers<F>(&mut self, mut func: F) -> PolarResult<()>
     where
-        F: FnMut(FollowerId, &mut BindingManager) -> Result<()>,
+        F: FnMut(FollowerId, &mut BindingManager) -> PolarResult<()>,
     {
         for (id, follower) in self.followers.iter_mut() {
             func(*id, follower)?
@@ -601,7 +609,6 @@ impl BindingManager {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::formatting::to_polar::ToPolarString;
 
     #[test]
     fn variable_state() {
@@ -785,13 +792,13 @@ mod test {
         let b2 = b1.remove_follower(&b2_id).unwrap();
 
         if let BindingManagerVariableState::Partial(p) = b1._variable_state(&sym!("x")) {
-            assert_eq!(p.to_polar(), "x = y and y = z and z = x and x > y");
+            assert_eq!(p.to_string(), "x = y and y = z and z = x and x > y");
         } else {
             panic!("unexpected");
         }
 
         if let BindingManagerVariableState::Partial(p) = b2._variable_state(&sym!("x")) {
-            assert_eq!(p.to_polar(), "x > y");
+            assert_eq!(p.to_string(), "x > y");
         } else {
             panic!("unexpected");
         }

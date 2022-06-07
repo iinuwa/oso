@@ -1,3 +1,5 @@
+HOST_OS := $(shell uname -s)
+
 .PHONY: test go-test rust-test rust-build python-build python-test python-flask-build \
 	python-flask-test python-django-test python-sqlalchemy-test ruby-test \
 	java-test docs-test fmt clippy lint wasm-build wasm-test js-test \
@@ -14,7 +16,12 @@ rust-test:
 	cargo test --all-targets --all-features
 
 rust-build:
+ifeq ($(HOST_OS), Darwin)
+	cargo build -p polar-c-api --target x86_64-apple-darwin
+	cargo build -p polar-c-api --target aarch64-apple-darwin
+else
 	cargo build -p polar-c-api
+endif
 
 python-build: rust-build
 	$(MAKE) -C languages/python/oso build
